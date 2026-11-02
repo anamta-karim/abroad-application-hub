@@ -74,12 +74,12 @@ export async function generateGroundedAnswer(
     }
   }
 
-  // 5. High-quality Deterministic Grounded Synthesis
+  // 5. Universal, Deterministic Grounded Synthesis
   return buildDeterministicGroundedResponse(question, relevantChunks, citations, workflowType);
 }
 
 /**
- * Builds rich, deterministic grounded response synthesized directly from source chunks.
+ * Builds clean, universal grounded response synthesized directly from source chunks.
  */
 function buildDeterministicGroundedResponse(
   question: string,
@@ -92,56 +92,33 @@ function buildDeterministicGroundedResponse(
   const allChunkText = chunks.map((c) => c.content).join("\n\n");
   const allChunkLower = allChunkText.toLowerCase();
 
-  // ── DETECT SCHOLARSHIP / PROGRAM CONTEXT ──
-  const isGKS =
-    allChunkLower.includes("gks") ||
-    allChunkLower.includes("global korea scholarship") ||
-    allChunkLower.includes("kgsp") ||
-    allChunkLower.includes("niied") ||
-    allChunkLower.includes("korean government");
-
-  const isScholarship =
-    isGKS ||
-    allChunkLower.includes("scholarship") ||
-    allChunkLower.includes("fellowship") ||
-    allChunkLower.includes("grant") ||
-    allChunkLower.includes("stipend");
-
   // ── 1. STATEMENT OF PURPOSE (SOP) BLUEPRINT ──
   if (workflowType === "sop") {
     const focusHeadings = chunks
       .map((c) => c.sectionHeading)
       .filter((h): h is string => Boolean(h && h.length > 3));
 
-    const programLabel = isGKS
-      ? "Global Korea Scholarship (GKS / KGSP)"
-      : isScholarship
-      ? "competitive scholarship & fellowship"
-      : "graduate degree admissions";
-
     const answer = [
       `### Tailored Statement of Purpose Architecture for ${sourceName}`,
       "",
-      `Based on the verified criteria in your official sources, admissions committees for **${programLabel}** evaluate candidates across four distinct pillars:`,
+      `Based on the official criteria in your attached documentation, admissions committees evaluate candidates across four essential pillars:`,
       "",
-      "#### 1. Narrative Hook & Specific Institution Alignment",
-      "• Open with your precise intellectual catalyst rather than generic childhood stories.",
-      `• Connect your background to specific program tracks or curricula referenced in **${sourceName}**${focusHeadings[0] ? ` (especially *${focusHeadings[0]}*)` : ""}.`,
-      "• Articulate why this specific institution and host country provide unique research infrastructure unavailable elsewhere.",
+      "#### 1. Narrative Hook & Program Alignment",
+      "• Open with your core intellectual catalyst and defining academic curiosity rather than broad generalizations.",
+      `• Connect your background directly to specific curricula or focus areas referenced in **${sourceName}**${focusHeadings[0] ? ` (particularly *${focusHeadings[0]}*)` : ""}.`,
+      "• Articulate why this specific institution and department provide the ideal academic environment for your target goals.",
       "",
       "#### 2. Academic Rigor & Research Methodology",
-      "• Directly address how your past coursework, GPA, and capstone/thesis prepare you for the required syllabus.",
-      "• If applying for a research track, outline 2-3 specific methodology frameworks, laboratory capabilities, or faculty specializations you aim to engage with.",
+      "• Detail how your past coursework, GPA, technical projects, or undergraduate thesis prepare you for the curriculum demands.",
+      "• If applying for a research-intensive track, outline 2-3 specific methodology frameworks, laboratory domains, or faculty specializations you aim to investigate.",
       "",
-      "#### 3. Bilateral & Societal Impact (The Scholarship Value Proposition)",
-      isScholarship
-        ? "• Scholarship evaluation committees prioritize candidates who bridge cultural, academic, and technological ties between their home country and the host nation."
-        : "• Articulate your concrete 3-5 year post-graduation career trajectory and how the department curriculum accelerates it.",
-      "• Explicitly state how you will apply your degree upon completion to solve concrete domain challenges.",
+      "#### 3. Professional Trajectory & Contribution",
+      "• Articulate your concrete 3-5 year post-graduation career path and how completing this degree accelerates it.",
+      "• Explicitly state how you plan to apply your academic training to solve key challenges in your field or industry.",
       "",
       "#### 4. Compliance & Verification Checklist",
-      "• Adhere strictly to official page, word count, and font limits (standard single-spaced Times New Roman 11pt if using standardized application forms).",
-      "• Ensure every claim of achievement is substantiated by an official transcript, certification, or portfolio item.",
+      "• Adhere strictly to official page, word count, and formatting limits specified in the admissions guidelines.",
+      "• Ensure every major claim or milestone mentioned in your narrative is backed by your official transcripts or CV.",
     ].join("\n");
 
     return {
@@ -159,36 +136,26 @@ function buildDeterministicGroundedResponse(
 
   // ── 2. INTERVIEW PREP STUDIO ──
   if (workflowType === "interview") {
-    const roundsDescription = isGKS
-      ? [
-          "• **Round 1 (Embassy or University Selection Committee)**: Document verification, candidate motivation, character, cultural adaptability, and basic Korean/English communication.",
-          "• **Round 2 (NIIED Central Selection Committee)**: Comprehensive academic dossier evaluation and quota allocation.",
-          "• **Round 3 (Target University Department Faculty)**: Academic department interview evaluating research proposal feasibility and prerequisite knowledge.",
-        ].join("\n")
-      : [
-          "• **Round 1 (Admissions Screening)**: Initial review of academic eligibility, language proficiency, and background prerequisites.",
-          "• **Round 2 (Faculty / Committee Interview)**: Technical discussion of your thesis/project proposal, motivation, and department fit.",
-        ].join("\n");
-
     const answer = [
       `### Grounded Interview Preparation Guide (${sourceName})`,
       "",
-      "#### Official Selection Stages & Committee Expectations:",
-      roundsDescription,
+      "#### Admissions Evaluation Stages & Committee Expectations:",
+      "• **Stage 1 (Admissions Screening)**: Verification of academic eligibility, language readiness, and motivation for the chosen program.",
+      "• **Stage 2 (Department Faculty Panel)**: In-depth technical discussion of your background, academic preparation, and departmental fit.",
       "",
-      "#### The 5 Core High-Yield Interview Questions & Winning Strategies:",
+      "#### 5 High-Yield Interview Questions & Frameworks:",
       "",
-      `1. **"Why did you choose ${isGKS ? "South Korea and the Global Korea Scholarship" : "this specific institution"} over other destinations?"**`,
-      "   *Strategy*: Avoid superficial reasons (e.g. pop culture). Anchor your response in specialized laboratory capabilities, bilateral cooperation, academic strengths, and regional leadership in your discipline.",
+      `1. **"Why did you choose this specific program and institution over other options?"**`,
+      "   *Strategy*: Anchor your response in specific curriculum modules, research facilities, and unique faculty strengths mentioned in the official syllabus.",
       "",
-      "2. **\"Walk us through your proposed research or study plan in under 90 seconds.\"**",
-      "   *Strategy*: Use the Problem-Method-Impact framework: 1) What specific challenge does your research address? 2) What methodology or coursework will you use? 3) What is the expected tangible outcome?",
+      "2. **\"Walk us through your proposed research or academic focus in under 90 seconds.\"**",
+      "   *Strategy*: Use the Problem-Method-Impact model: 1) What specific challenge does your work address? 2) What methodology or coursework will you apply? 3) What is the expected outcome?",
       "",
-      "3. **\"How will you handle intensive language learning and cultural adaptation?\"**",
-      `   *Strategy*: ${isGKS ? "Acknowledge the 1-year Korean language training requirement. " : ""}Provide concrete past examples showing cross-cultural resilience and proactive language acquisition strategies.`,
+      "3. **\"Describe a past academic or technical setback and how you resolved it.\"**",
+      "   *Strategy*: Share a concrete past experience demonstrating intellectual stamina, problem-solving, and proactive collaboration.",
       "",
-      "4. **\"What are your concrete career plans after completing this program?\"**",
-      "   *Strategy*: Detail a clear 3-to-5-year trajectory (e.g. specialized industry R&D, academia, international organizations) that connects directly to the scholarship mission.",
+      "4. **\"What are your concrete professional objectives following this degree?\"**",
+      "   *Strategy*: Provide a realistic 3-to-5-year trajectory connecting your prospective studies directly to your target industry or research domain.",
       "",
       "5. **\"What questions do you have for the admissions committee?\"**",
       "   *Strategy*: Prepare 2 thoughtful questions regarding upcoming departmental research directions, laboratory equipment, or collaborative industry projects.",
@@ -212,22 +179,22 @@ function buildDeterministicGroundedResponse(
     const answer = [
       `### Recommendation Letter (LOR) Strategy Brief (${sourceName})`,
       "",
-      "#### 1. Ideal Recommender Selection Matrix",
-      "• **Primary Academic Referee**: A department professor or thesis advisor who taught you in upper-level courses and can evaluate your analytical rigor and intellectual rank (e.g. top 5-10%).",
-      "• **Secondary Referee**: A research mentor, laboratory director, or professional supervisor who can testify to your project leadership, technical independence, and ethical stamina.",
+      "#### 1. Recommender Selection Guidelines",
+      "• **Primary Academic Referee**: A department professor or thesis advisor who taught you in advanced courses and can speak to your intellectual rigor and ranking relative to your cohort.",
+      "• **Secondary Referee**: A research mentor, laboratory director, or professional supervisor who can testify to your project leadership, problem-solving stamina, and reliability.",
       "",
-      "#### 2. Essential Evidence Referees Must Include",
-      "• **Comparative Ranking**: Statements like *'ranked among the top 3 in a cohort of 50 students in Advanced Algorithms'* carry far more weight than generic compliments.",
-      "• **Intellectual Stamina**: Concrete anecdotes showing how you overcame difficult laboratory setbacks or complex theoretical hurdles.",
-      "• **Cross-Cultural & Collaborative Maturity**: Willingness to work in diverse international research groups and adapt to rigorous academic environments.",
+      "#### 2. Essential Evidence Referees Should Include",
+      "• **Comparative Context**: Quantified evaluations such as *'ranked among the top 5% in advanced seminar coursework'* provide strong signal to admissions committees.",
+      "• **Intellectual Stamina**: Concrete anecdotes showing how you navigated complex technical obstacles or independent research challenges.",
+      "• **Collaborative Maturity**: Demonstrated ability to contribute productively in group projects and rigorous academic settings.",
       "",
-      "#### 3. Strict Submission & Verification Protocol",
-      "• **Official Letterhead**: Must be printed on official university or institutional letterhead.",
-      "• **Authentication**: Hand-signed (wet signature) or verifiable institutional digital signature with official department stamp.",
-      "• **Sealed Envelope Rule**: If postal submission is required by the program/embassy, the recommendation letter must be enclosed in an official envelope sealed with the referee's signature across the flap.",
+      "#### 3. Submission & Packaging Protocol",
+      "• **Official Letterhead**: Must be printed on official institutional or university letterhead.",
+      "• **Authentication**: Hand-signed or verified via official institutional digital signature with departmental stamp.",
+      "• **Submission Method**: Follow program instructions strictly (direct secure portal upload by the referee or sealed physical envelope where applicable).",
       "",
-      "#### 4. Ready-to-Send Referee Briefing Kit",
-      "Provide your referee with a clean 1-page briefing containing: your updated CV, a bulleted list of projects/grades completed in their class, the exact degree/scholarship name, and the submission deadline.",
+      "#### 4. Recommender Briefing Kit",
+      "Provide your referee with a concise 1-page briefing containing your updated CV, a bulleted list of projects completed under their supervision, and target application deadlines.",
     ].join("\n");
 
     return {
@@ -248,22 +215,21 @@ function buildDeterministicGroundedResponse(
     const answer = [
       `### Academic Study Plan & Timeline Structure (${sourceName})`,
       "",
-      "#### Phase 1: Orientation & Preparatory Foundations",
-      isGKS
-        ? "• **Intensive Korean Language Training (Year 1)**: Dedicated language institute coursework targeting TOPIK Level 3 or higher prior to entering the degree curriculum."
-        : "• **Prerequisite Coursework**: Diagnostic language proficiency and foundational graduate coursework in research methodologies.",
+      "#### Phase 1: Foundational Coursework & Diagnostic Preparation",
+      "• Complete mandatory departmental core prerequisites and foundational research methodology seminars.",
+      "• Establish departmental advisor relationships and confirm required academic milestones.",
       "",
-      "#### Phase 2: Core Curriculum & Seminars",
-      "• Complete mandatory departmental core credits and specialized elective modules.",
-      "• Participate in faculty colloquiums, departmental seminars, and initial laboratory rotations.",
+      "#### Phase 2: Core Department Curriculum & Elective Specialization",
+      "• Enroll in advanced departmental seminar modules and specialized electives.",
+      "• Participate in faculty colloquiums, departmental research seminars, and preliminary laboratory rotations.",
       "",
       "#### Phase 3: Research Specialization & Thesis Proposal",
-      "• Finalize faculty thesis advisor and formulate research methodology proposal.",
+      "• Finalize faculty thesis advisor, define research questions, and submit formal thesis proposal.",
       "• Conduct literature review, experimental/computational data collection, and preliminary findings review.",
       "",
-      "#### Phase 4: Dissertation Defense & Post-Study Transition",
-      "• Prepare manuscript submissions for peer-reviewed journal publications or international conferences.",
-      "• Complete thesis defense, final degree graduation requirements, and transition into targeted career or doctoral pathways.",
+      "#### Phase 4: Dissertation Defense & Professional Transition",
+      "• Complete capstone project or thesis manuscript submissions.",
+      "• Complete final defense, fulfill graduation requirements, and transition into target career or doctoral pathways.",
     ].join("\n");
 
     return {
@@ -279,10 +245,9 @@ function buildDeterministicGroundedResponse(
   }
 
   // ── 5. FREE GROUNDED Q&A ENGINE ──
-  const qTokens = tokenize(question);
   const qLower = question.toLowerCase();
 
-  // Check if user is asking about language requirements (e.g. TOPIK, IELTS, TOEFL)
+  // Check if user is asking about language requirements (e.g. TOPIK, IELTS, TOEFL, English, Korean)
   const isAskingLanguage =
     qLower.includes("topik") ||
     qLower.includes("ielts") ||
@@ -304,26 +269,16 @@ function buildDeterministicGroundedResponse(
   const termFoundInSources = allChunkLower.includes(specificMentionedTerm.toLowerCase());
 
   if (isAskingLanguage && !termFoundInSources) {
-    // Highly informative, accurate answer when the specific test is not detailed in the attached summary
     const answer = [
       `### Requirement Finding for ${specificMentionedTerm} (${sourceName})`,
       "",
       `**No explicit ${specificMentionedTerm} score requirement is mentioned in your attached source document.**`,
       "",
-      `I searched your attached document (*${sourceName}*) for "${specificMentionedTerm}", but this specific guideline document does not list a mandatory minimum score table.`,
+      `I searched your attached document (*${sourceName}*) for "${specificMentionedTerm}", but this specific guideline document does not list a mandatory minimum score table or threshold.`,
       "",
-      "#### Official Admissions & Scholarship Context:",
-      isGKS
-        ? [
-            "• **GKS Submission Policy**: Submitting a TOPIK score is generally **optional** at the initial application submission stage for most programs, though holding **TOPIK Level 3 or higher** grants **10% extra bonus points** in the 1st and 2nd selection rounds.",
-            "• **1-Year Language Training**: Selected GKS scholars who do not hold TOPIK Level 5 or 6 are required to take a mandatory 1-year Korean language training course at a designated university language institute before beginning their degree program.",
-            "• **University-Specific Thresholds**: Individual Korean universities or English-taught tracks may independently require IELTS (typically 6.0+) or TOEFL (typically 80+).",
-            "• **Recommended Action**: Check the detailed *GKS Application Guidelines PDF* or the *University Information Sheet* for your target university department.",
-          ].join("\n")
-        : [
-            "• Many general admissions prospectus summaries list overall eligibility without detailing specific departmental score cutoffs.",
-            "• Please attach the dedicated *Language Requirements Sheet* or *Department Admissions PDF* to retrieve the exact minimum score.",
-          ].join("\n"),
+      "#### Admissions Recommendation:",
+      "• Admissions prospectuses sometimes outline broad guidelines while specific language score cutoffs are maintained in a separate departmental requirement sheet.",
+      "• Please check if your target university department publishes a supplementary requirements guide or contact the admissions coordinator directly to confirm minimum score thresholds.",
     ].join("\n");
 
     return {

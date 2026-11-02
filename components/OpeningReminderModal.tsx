@@ -63,7 +63,7 @@ export function OpeningReminderModal() {
                   name="title"
                   type="text"
                   required
-                  placeholder="e.g., Chevening Scholarship 2027, DAAD Helmut-Schmidt"
+                  placeholder="e.g. Master of Computer Science, Merit Scholarship"
                   className="w-full px-3.5 py-2 rounded-xl text-sm glass-input text-ink-deep placeholder:text-ink-subtle"
                 />
               </div>
@@ -109,7 +109,7 @@ export function OpeningReminderModal() {
                     id="reminder-institution"
                     name="institution"
                     type="text"
-                    placeholder="e.g., British Council, Cambridge"
+                    placeholder="e.g. University name or scholarship provider"
                     className="w-full px-3.5 py-2 rounded-xl text-sm glass-input text-ink-deep placeholder:text-ink-subtle"
                   />
                 </div>

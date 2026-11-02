@@ -48,7 +48,6 @@ export function ApplicationPrepHub({ applicationId, hasSources }: ApplicationPre
     };
 
     const q = promptMap[type];
-    setQueryInput(q);
     const res = await askGroundedQuestionAction(applicationId, q, type);
     if (res.error) {
       setErrorMsg(res.error);
@@ -147,11 +146,7 @@ export function ApplicationPrepHub({ applicationId, hasSources }: ApplicationPre
           type="text"
           value={queryInput}
           onChange={(e) => setQueryInput(e.target.value)}
-          placeholder={
-            activeWorkflow === "qa"
-              ? "e.g., What are the English or TOPIK language requirements? What is the GPA threshold?"
-              : "Ask or refine this blueprint..."
-          }
+          placeholder="Ask a question about admission requirements, deadlines, or criteria..."
           className="flex-1 px-4 py-2.5 rounded-xl text-xs sm:text-sm glass-input text-ink-deep placeholder:text-ink-subtle"
         />
         <button

@@ -96,7 +96,7 @@ export function NewApplicationForm() {
               name="title"
               type="text"
               required
-              placeholder="e.g. M.Sc. Computer Science or DAAD Scholarship"
+              placeholder="e.g. Master of Computer Science, Merit Scholarship"
               className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
             />
           </div>
@@ -127,7 +127,7 @@ export function NewApplicationForm() {
                 id="live-institution"
                 name="institution"
                 type="text"
-                placeholder="e.g. Technical University of Munich"
+                placeholder="e.g. University name or provider"
                 className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
               />
             </div>
@@ -233,7 +233,7 @@ export function NewApplicationForm() {
               name="title"
               type="text"
               required
-              placeholder="e.g. Global Korea Scholarship 2027, Chevening 2027/28"
+              placeholder="e.g. Program or scholarship title"
               className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
             />
           </div>
@@ -258,13 +258,13 @@ export function NewApplicationForm() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label htmlFor="reminder-institution" className="block text-xs font-bold text-ink-deep font-heading">
-                University / Provider / Embassy
+                University / Provider
               </label>
               <input
                 id="reminder-institution"
                 name="institution"
                 type="text"
-                placeholder="e.g. NIIED, DAAD, British Council"
+                placeholder="e.g. University name or scholarship provider"
                 className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
               />
             </div>
@@ -277,7 +277,7 @@ export function NewApplicationForm() {
                 id="reminder-targetCycle"
                 name="targetCycle"
                 type="text"
-                placeholder="e.g. Fall 2027 Intake, 2027 Cycle"
+                placeholder="e.g. Fall 2026, Spring 2027"
                 className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
               />
             </div>
@@ -309,7 +309,7 @@ export function NewApplicationForm() {
               id="reminder-notes"
               name="notes"
               rows={2}
-              placeholder="e.g. Embassy track usually opens early February; University track follows in March."
+              placeholder="e.g. Expected announcement window or past cycle timeline"
               className="w-full p-3 text-sm glass-input rounded-xl"
             />
           </div>

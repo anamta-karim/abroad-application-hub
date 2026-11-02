@@ -50,7 +50,7 @@ export function EditApplicationForm({ application }: EditApplicationFormProps) {
           type="text"
           required
           defaultValue={application.title}
-          placeholder="e.g., MSc Computer Science, Chevening Scholarship"
+          placeholder="e.g. Master of Computer Science, Merit Scholarship"
           className="w-full px-4 py-2.5 rounded-xl text-sm glass-input text-ink-deep placeholder:text-ink-subtle"
         />
       </div>
@@ -105,7 +105,7 @@ export function EditApplicationForm({ application }: EditApplicationFormProps) {
             name="institution"
             type="text"
             defaultValue={application.institution_or_provider || ""}
-            placeholder="e.g., University of Oxford, DAAD"
+            placeholder="e.g. University name or scholarship provider"
             className="w-full px-4 py-2.5 rounded-xl text-sm glass-input text-ink-deep placeholder:text-ink-subtle"
           />
         </div>
