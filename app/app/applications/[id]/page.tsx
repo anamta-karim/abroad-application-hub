@@ -250,7 +250,8 @@ export default async function ApplicationDetailPage({ params }: ApplicationDetai
                 rel="noopener noreferrer"
                 className="text-xs font-bold text-brand hover:underline inline-flex items-center gap-1"
               >
-                Open Official Site &nearr;
+                <span>Open Official Site</span>
+                <span aria-hidden="true">↗</span>
               </a>
             </div>
           )}

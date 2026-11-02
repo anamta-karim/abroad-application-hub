@@ -1,146 +1,351 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState, useEffect, useActionState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createApplicationAction, type ActionResponse } from "@/app/app/applications/actions";
+import {
+  createApplicationAction,
+  createOpeningReminderAction,
+  type ActionResponse,
+} from "@/app/app/applications/actions";
 
 const initialState: ActionResponse = {};
 
 export function NewApplicationForm() {
-  const [state, formAction, isPending] = useActionState(createApplicationAction, initialState);
+  const router = useRouter();
+  const [entryMode, setEntryMode] = useState<"live" | "reminder">("live");
+
+  const [liveState, liveAction, isLivePending] = useActionState(createApplicationAction, initialState);
+  const [reminderState, reminderAction, isReminderPending] = useActionState(createOpeningReminderAction, initialState);
+
+  useEffect(() => {
+    if (reminderState?.success) {
+      router.push("/app");
+    }
+  }, [reminderState?.success, router]);
 
   return (
-    <form action={formAction} className="space-y-6">
-      {state?.error && (
-        <div
-          className="p-3.5 text-xs rounded-xl bg-red-50/80 border border-red-200 text-red-800 font-medium"
-          role="alert"
-        >
-          {state.error}
+    <div className="space-y-6">
+      {/* ── Mode Selection: Live Application vs Opening Watchlist ── */}
+      <div className="space-y-2">
+        <label className="block text-xs font-bold text-ink-deep font-heading uppercase tracking-wider">
+          What is the current status of this application?
+        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setEntryMode("live")}
+            className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+              entryMode === "live"
+                ? "border-brand bg-brand-soft/70 shadow-sm ring-2 ring-brand/30"
+                : "border-glass-borderSubtle bg-white/40 hover:bg-white/70 text-ink-muted"
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <span className="text-base">🟢</span>
+              <span className="font-heading font-extrabold text-sm text-ink-deep">
+                Application is Open
+              </span>
+            </div>
+            <p className="text-xs text-ink-muted mt-1.5 leading-relaxed">
+              The portal is currently open. Track submission milestones, required documents, and confirmed deadlines.
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setEntryMode("reminder")}
+            className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+              entryMode === "reminder"
+                ? "border-brand bg-brand-soft/70 shadow-sm ring-2 ring-brand/30"
+                : "border-glass-borderSubtle bg-white/40 hover:bg-white/70 text-ink-muted"
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <span className="text-base">🔔</span>
+              <span className="font-heading font-extrabold text-sm text-ink-deep">
+                Not Open Yet (Set Reminder)
+              </span>
+            </div>
+            <p className="text-xs text-ink-muted mt-1.5 leading-relaxed">
+              Submissions haven&apos;t started yet. Save an expected opening date to your Watchlist to get alerted when it launches.
+            </p>
+          </button>
         </div>
+      </div>
+
+      {/* ── MODE 1: LIVE APPLICATION FORM ── */}
+      {entryMode === "live" && (
+        <form action={liveAction} className="space-y-5 animate-fade-in">
+          {liveState?.error && (
+            <div
+              className="p-3.5 text-xs rounded-xl bg-red-50/80 border border-red-200 text-red-800 font-medium"
+              role="alert"
+            >
+              {liveState.error}
+            </div>
+          )}
+
+          {/* Title */}
+          <div className="space-y-1.5">
+            <label htmlFor="live-title" className="block text-xs font-bold text-ink-deep font-heading">
+              Application Title <span className="text-brand">*</span>
+            </label>
+            <input
+              id="live-title"
+              name="title"
+              type="text"
+              required
+              placeholder="e.g. M.Sc. Computer Science or DAAD Scholarship"
+              className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
+            />
+          </div>
+
+          {/* Record Type */}
+          <div className="space-y-1.5">
+            <label htmlFor="live-recordType" className="block text-xs font-bold text-ink-deep font-heading">
+              Type
+            </label>
+            <select
+              id="live-recordType"
+              name="recordType"
+              defaultValue="program"
+              className="w-full h-11 px-3.5 text-sm glass-input rounded-xl bg-white/90"
+            >
+              <option value="program">University Degree Program</option>
+              <option value="scholarship">Scholarship / Fellowship</option>
+            </select>
+          </div>
+
+          {/* Grid: Institution & Country */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label htmlFor="live-institution" className="block text-xs font-bold text-ink-deep font-heading">
+                University / Provider
+              </label>
+              <input
+                id="live-institution"
+                name="institution"
+                type="text"
+                placeholder="e.g. Technical University of Munich"
+                className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="live-country" className="block text-xs font-bold text-ink-deep font-heading">
+                Country
+              </label>
+              <input
+                id="live-country"
+                name="country"
+                type="text"
+                placeholder="e.g. Germany"
+                className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
+              />
+            </div>
+          </div>
+
+          {/* Grid: Degree & Deadline */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label htmlFor="live-degreeLevel" className="block text-xs font-bold text-ink-deep font-heading">
+                Degree Level
+              </label>
+              <input
+                id="live-degreeLevel"
+                name="degreeLevel"
+                type="text"
+                placeholder="e.g. Master, PhD, Bachelor"
+                className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="live-deadline" className="block text-xs font-bold text-ink-deep font-heading">
+                Target Submission Deadline <span className="text-brand">*</span>
+              </label>
+              <input
+                id="live-deadline"
+                name="deadline"
+                type="date"
+                required
+                className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
+              />
+            </div>
+          </div>
+
+          {/* Official URL */}
+          <div className="space-y-1.5">
+            <label htmlFor="live-officialUrl" className="block text-xs font-bold text-ink-deep font-heading">
+              Official Webpage URL (optional)
+            </label>
+            <input
+              id="live-officialUrl"
+              name="officialUrl"
+              type="url"
+              placeholder="https://..."
+              className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
+            />
+            <p className="text-[11px] text-ink-muted">
+              Official admissions portal link used for grounding requirements and verified dates.
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-between pt-4 border-t border-glass-borderSubtle">
+            <Link
+              href="/app"
+              className="px-4 py-2.5 text-xs font-bold text-ink-muted hover:text-ink-deep transition-colors"
+            >
+              Cancel
+            </Link>
+            <button
+              type="submit"
+              disabled={isLivePending}
+              className="px-6 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-brand to-brand-dark hover:from-brand-hover hover:to-brand rounded-xl shadow-md shadow-brand/20 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {isLivePending ? "Saving application..." : "Save Application"}
+            </button>
+          </div>
+        </form>
       )}
 
-      {/* Title */}
-      <div className="space-y-1.5">
-        <label htmlFor="title" className="block text-xs font-bold text-ink-deep font-heading">
-          Application Title <span className="text-brand">*</span>
-        </label>
-        <input
-          id="title"
-          name="title"
-          type="text"
-          required
-          placeholder="e.g. M.Sc. Computer Science or DAAD Scholarship"
-          className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
-        />
-      </div>
+      {/* ── MODE 2: OPENING REMINDER WATCHLIST FORM ── */}
+      {entryMode === "reminder" && (
+        <form action={reminderAction} className="space-y-5 animate-fade-in">
+          {reminderState?.error && (
+            <div
+              className="p-3.5 text-xs rounded-xl bg-red-50/80 border border-red-200 text-red-800 font-medium"
+              role="alert"
+            >
+              {reminderState.error}
+            </div>
+          )}
 
-      {/* Record Type */}
-      <div className="space-y-1.5">
-        <label htmlFor="recordType" className="block text-xs font-bold text-ink-deep font-heading">
-          Type
-        </label>
-        <select
-          id="recordType"
-          name="recordType"
-          defaultValue="program"
-          className="w-full h-11 px-3.5 text-sm glass-input rounded-xl bg-white/90"
-        >
-          <option value="program">University Degree Program</option>
-          <option value="scholarship">Scholarship / Fellowship</option>
-        </select>
-      </div>
+          {/* Title */}
+          <div className="space-y-1.5">
+            <label htmlFor="reminder-title" className="block text-xs font-bold text-ink-deep font-heading">
+              Program or Scholarship Name <span className="text-brand">*</span>
+            </label>
+            <input
+              id="reminder-title"
+              name="title"
+              type="text"
+              required
+              placeholder="e.g. Global Korea Scholarship 2027, Chevening 2027/28"
+              className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
+            />
+          </div>
 
-      {/* Grid: Institution & Country */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <label htmlFor="institution" className="block text-xs font-bold text-ink-deep font-heading">
-            University / Provider
-          </label>
-          <input
-            id="institution"
-            name="institution"
-            type="text"
-            placeholder="e.g. Technical University of Munich"
-            className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
-          />
-        </div>
+          {/* Record Type */}
+          <div className="space-y-1.5">
+            <label htmlFor="reminder-recordType" className="block text-xs font-bold text-ink-deep font-heading">
+              Type
+            </label>
+            <select
+              id="reminder-recordType"
+              name="recordType"
+              defaultValue="scholarship"
+              className="w-full h-11 px-3.5 text-sm glass-input rounded-xl bg-white/90"
+            >
+              <option value="scholarship">Scholarship / Fellowship</option>
+              <option value="program">University Degree Program</option>
+            </select>
+          </div>
 
-        <div className="space-y-1.5">
-          <label htmlFor="country" className="block text-xs font-bold text-ink-deep font-heading">
-            Country
-          </label>
-          <input
-            id="country"
-            name="country"
-            type="text"
-            placeholder="e.g. Germany"
-            className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
-          />
-        </div>
-      </div>
+          {/* Grid: Institution & Target Cycle */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label htmlFor="reminder-institution" className="block text-xs font-bold text-ink-deep font-heading">
+                University / Provider / Embassy
+              </label>
+              <input
+                id="reminder-institution"
+                name="institution"
+                type="text"
+                placeholder="e.g. NIIED, DAAD, British Council"
+                className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
+              />
+            </div>
 
-      {/* Grid: Degree & Deadline */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <label htmlFor="degreeLevel" className="block text-xs font-bold text-ink-deep font-heading">
-            Degree Level
-          </label>
-          <input
-            id="degreeLevel"
-            name="degreeLevel"
-            type="text"
-            placeholder="e.g. Master, PhD, Bachelor"
-            className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
-          />
-        </div>
+            <div className="space-y-1.5">
+              <label htmlFor="reminder-targetCycle" className="block text-xs font-bold text-ink-deep font-heading">
+                Target Academic Cycle
+              </label>
+              <input
+                id="reminder-targetCycle"
+                name="targetCycle"
+                type="text"
+                placeholder="e.g. Fall 2027 Intake, 2027 Cycle"
+                className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
+              />
+            </div>
+          </div>
 
-        <div className="space-y-1.5">
-          <label htmlFor="deadline" className="block text-xs font-bold text-ink-deep font-heading">
-            Target Deadline
-          </label>
-          <input
-            id="deadline"
-            name="deadline"
-            type="date"
-            className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
-          />
-        </div>
-      </div>
+          {/* Expected Open Date */}
+          <div className="space-y-1.5">
+            <label htmlFor="reminder-expectedOpenDate" className="block text-xs font-bold text-ink-deep font-heading">
+              Expected Portal Opening Date <span className="text-brand">*</span>
+            </label>
+            <input
+              id="reminder-expectedOpenDate"
+              name="expectedOpenDate"
+              type="date"
+              required
+              className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
+            />
+            <p className="text-[11px] text-ink-muted">
+              Estimated date based on previous annual cycles. You will receive an automated dashboard nudge alert when this date approaches.
+            </p>
+          </div>
 
-      {/* Official URL */}
-      <div className="space-y-1.5">
-        <label htmlFor="officialUrl" className="block text-xs font-bold text-ink-deep font-heading">
-          Official Webpage URL (optional)
-        </label>
-        <input
-          id="officialUrl"
-          name="officialUrl"
-          type="url"
-          placeholder="https://..."
-          className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
-        />
-        <p className="text-[11px] text-ink-muted">
-          Official link used for grounding requirements and extracted dates.
-        </p>
-      </div>
+          {/* Notes on Past Opening Trends */}
+          <div className="space-y-1.5">
+            <label htmlFor="reminder-notes" className="block text-xs font-bold text-ink-deep font-heading">
+              Notes on Past Opening Trends (optional)
+            </label>
+            <textarea
+              id="reminder-notes"
+              name="notes"
+              rows={2}
+              placeholder="e.g. Embassy track usually opens early February; University track follows in March."
+              className="w-full p-3 text-sm glass-input rounded-xl"
+            />
+          </div>
 
-      {/* Actions */}
-      <div className="flex items-center justify-between pt-4 border-t border-glass-borderSubtle">
-        <Link
-          href="/app"
-          className="px-4 py-2.5 text-xs font-bold text-ink-muted hover:text-ink-deep transition-colors"
-        >
-          Cancel
-        </Link>
-        <button
-          type="submit"
-          disabled={isPending}
-          className="px-6 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-brand to-brand-dark hover:from-brand-hover hover:to-brand rounded-xl shadow-md shadow-brand/20 active:scale-95 transition-all disabled:opacity-50"
-        >
-          {isPending ? "Saving application..." : "Save application"}
-        </button>
-      </div>
-    </form>
+          {/* Official Announcement URL */}
+          <div className="space-y-1.5">
+            <label htmlFor="reminder-officialUrl" className="block text-xs font-bold text-ink-deep font-heading">
+              Announcement / Portal URL (optional)
+            </label>
+            <input
+              id="reminder-officialUrl"
+              name="officialUrl"
+              type="url"
+              placeholder="https://..."
+              className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-between pt-4 border-t border-glass-borderSubtle">
+            <Link
+              href="/app"
+              className="px-4 py-2.5 text-xs font-bold text-ink-muted hover:text-ink-deep transition-colors"
+            >
+              Cancel
+            </Link>
+            <button
+              type="submit"
+              disabled={isReminderPending}
+              className="px-6 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-brand to-brand-dark hover:from-brand-hover hover:to-brand rounded-xl shadow-md shadow-brand/20 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {isReminderPending ? "Saving reminder..." : "Set Opening Reminder"}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
   );
 }

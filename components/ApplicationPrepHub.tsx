@@ -149,7 +149,7 @@ export function ApplicationPrepHub({ applicationId, hasSources }: ApplicationPre
           onChange={(e) => setQueryInput(e.target.value)}
           placeholder={
             activeWorkflow === "qa"
-              ? "e.g., What are the English language test minimum scores? Is an interview required?"
+              ? "e.g., What are the English or TOPIK language requirements? What is the GPA threshold?"
               : "Ask or refine this blueprint..."
           }
           className="flex-1 px-4 py-2.5 rounded-xl text-xs sm:text-sm glass-input text-ink-deep placeholder:text-ink-subtle"
@@ -157,7 +157,7 @@ export function ApplicationPrepHub({ applicationId, hasSources }: ApplicationPre
         <button
           type="submit"
           disabled={isPending || !queryInput.trim()}
-          className="px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-brand to-brand-dark hover:from-brand-hover hover:to-brand rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center space-x-1.5"
+          className="px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-brand to-brand-dark hover:from-brand-hover hover:to-brand rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center space-x-1.5 cursor-pointer"
         >
           <span>{isPending ? "Retrieving..." : "Ask Sources"}</span>
           <span>&rarr;</span>
@@ -188,10 +188,8 @@ export function ApplicationPrepHub({ applicationId, hasSources }: ApplicationPre
             </span>
           </div>
 
-          {/* Factual Answer Body */}
-          <div className="text-xs sm:text-sm text-ink-deep leading-relaxed whitespace-pre-line">
-            {response.answer}
-          </div>
+          {/* Formatted Factual Answer Body */}
+          <GroundedAnswerView content={response.answer} />
 
           {/* Structured Citation Chips */}
           {response.citations.length > 0 && (
@@ -261,4 +259,83 @@ export function ApplicationPrepHub({ applicationId, hasSources }: ApplicationPre
       )}
     </div>
   );
+}
+
+function GroundedAnswerView({ content }: { content: string }) {
+  const paragraphs = content.split("\n\n");
+
+  return (
+    <div className="space-y-3 text-xs sm:text-sm text-ink-deep leading-relaxed">
+      {paragraphs.map((para, pIdx) => {
+        const trimmed = para.trim();
+        if (!trimmed) return null;
+
+        if (trimmed.startsWith("### ")) {
+          return (
+            <h3 key={pIdx} className="font-heading font-extrabold text-sm sm:text-base text-ink-deep pt-1">
+              {trimmed.replace(/^###\s+/, "")}
+            </h3>
+          );
+        }
+
+        if (trimmed.startsWith("#### ")) {
+          return (
+            <h4 key={pIdx} className="font-heading font-bold text-xs sm:text-sm text-brand-dark pt-1">
+              {trimmed.replace(/^####\s+/, "")}
+            </h4>
+          );
+        }
+
+        const lines = trimmed.split("\n");
+        const isList = lines.every(
+          (line) =>
+            line.trim().startsWith("•") ||
+            line.trim().startsWith("-") ||
+            /^\d+\.\s/.test(line.trim())
+        );
+
+        if (isList) {
+          return (
+            <ul key={pIdx} className="space-y-1.5 pl-1">
+              {lines.map((line, lIdx) => {
+                const cleanedLine = line.replace(/^[•\-]\s*/, "");
+                return (
+                  <li key={lIdx} className="leading-relaxed flex items-start space-x-2">
+                    <span className="text-brand font-bold mt-0.5">•</span>
+                    <span
+                      dangerouslySetInnerHTML={{
+                        __html: formatInlineMarkdown(cleanedLine),
+                      }}
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+          );
+        }
+
+        return (
+          <div key={pIdx} className="space-y-1">
+            {lines.map((line, lIdx) => (
+              <p
+                key={lIdx}
+                className="leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(line) }}
+              />
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function formatInlineMarkdown(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+    .replace(/`([^`]+)`/g, "<code class='bg-slate-100 px-1 py-0.5 rounded text-[11px] font-mono'>$1</code>");
 }

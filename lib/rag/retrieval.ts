@@ -11,6 +11,18 @@ export interface RankedChunk {
   score: number;
 }
 
+const HIGH_SPECIFICITY_KEYWORDS = new Set([
+  "topik", "ielts", "toefl", "duolingo", "pte", "gre", "gmat", "sat", "act",
+  "gpa", "cgpa", "ects", "credits", "transcript",
+  "apostille", "consular", "consulate", "embassy", "notary", "notarized",
+  "stipend", "allowance", "tuition", "airfare", "dormitory", "dorm",
+  "recommendation", "referee", "lor", "sop", "statement", "essay",
+  "interview", "screening", "selection", "quota", "track", "round",
+  "deadline", "dates", "schedule", "timeline", "age", "eligibility",
+  "nationality", "citizenship", "medical", "physical", "visa",
+  "gks", "kgsp", "niied", "daad", "mext", "csc", "chevening", "fulbright", "erasmus",
+]);
+
 /**
  * Retrieves the most semantically and lexically relevant chunks for an application query.
  * Scoped strictly to the authenticated user and target application_id.
@@ -59,11 +71,15 @@ export async function retrieveRelevantChunks(
   }
 
   const queryTermsSet = new Set(queryTokens);
+  const specificQueryTerms = queryTokens.filter((t) => HIGH_SPECIFICITY_KEYWORDS.has(t));
+  const hasSpecificQueryTerms = specificQueryTerms.length > 0;
+
   const ranked: RankedChunk[] = [];
 
-  // 3. Score chunks using term frequency and heading weight
+  // 3. Score chunks using weighted term frequency, specificity, heading, and sentence co-occurrence
   for (const item of chunksData as any[]) {
     const content = item.content || "";
+    const contentLower = content.toLowerCase();
     const heading = (item.section_heading || "").toLowerCase();
     const sourceInfo = item.sources || {};
     const sourceTitle = sourceInfo.display_name || "Official Source";
@@ -73,25 +89,68 @@ export async function retrieveRelevantChunks(
     if (contentTokens.length === 0) continue;
 
     let matchCount = 0;
+    let specificMatches = 0;
+
     for (const token of contentTokens) {
       if (queryTermsSet.has(token)) {
         matchCount++;
+        if (HIGH_SPECIFICITY_KEYWORDS.has(token)) {
+          specificMatches++;
+        }
       }
     }
 
-    // Heading boost: if query matches section heading, add significant weight
+    // Specific term presence check
+    let chunkHasSpecificTerms = false;
+    for (const st of specificQueryTerms) {
+      if (contentLower.includes(st) || heading.includes(st)) {
+        chunkHasSpecificTerms = true;
+        break;
+      }
+    }
+
+    // If query asked for a high-specificity term (e.g. topik) and this chunk does NOT contain it,
+    // don't let common generic words like 'required' inflate its score over chunks that do!
+    if (hasSpecificQueryTerms && !chunkHasSpecificTerms) {
+      matchCount = Math.min(matchCount, 1);
+    }
+
+    // Heading boost: if query terms match section heading
     let headingBoost = 0;
     for (const qt of queryTokens) {
       if (heading.includes(qt)) {
-        headingBoost += 3;
+        headingBoost += HIGH_SPECIFICITY_KEYWORDS.has(qt) ? 15 : 4;
       }
     }
 
+    // Specific match super-boost
+    const specificityBoost = specificMatches * 15;
+
     // Phrase match bonus
-    const phraseBonus = content.toLowerCase().includes(query.toLowerCase().trim()) ? 5 : 0;
+    const queryTrimmed = query.toLowerCase().trim();
+    const phraseBonus = contentLower.includes(queryTrimmed) ? 20 : 0;
+
+    // Sentence co-occurrence bonus: 2 or more query terms in the same sentence
+    let sentenceCooccurrenceBonus = 0;
+    const sentences = contentLower.split(/(?<=[.!?])\s+/);
+    for (const sentence of sentences) {
+      let sentenceMatches = 0;
+      for (const qt of queryTokens) {
+        if (sentence.includes(qt)) sentenceMatches++;
+      }
+      if (sentenceMatches >= 2) {
+        sentenceCooccurrenceBonus = Math.max(sentenceCooccurrenceBonus, sentenceMatches * 6);
+      }
+    }
 
     const termDensity = matchCount / Math.max(contentTokens.length, 50);
-    const totalScore = matchCount + headingBoost + phraseBonus + termDensity * 10;
+    const totalScore =
+      matchCount +
+      specificityBoost +
+      headingBoost +
+      phraseBonus +
+      sentenceCooccurrenceBonus +
+      termDensity * 10;
 
     if (totalScore > 0) {
       ranked.push({
@@ -113,7 +172,7 @@ export async function retrieveRelevantChunks(
   return ranked.slice(0, topK);
 }
 
-function tokenize(text: string): string[] {
+export function tokenize(text: string): string[] {
   const stopwords = new Set([
     "a", "an", "the", "in", "on", "at", "by", "for", "with", "about",
     "against", "between", "into", "through", "during", "before", "after",
@@ -129,5 +188,5 @@ function tokenize(text: string): string[] {
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, " ")
     .split(/\s+/)
-    .filter((word) => word.length > 2 && !stopwords.has(word));
+    .filter((word) => word.length >= 2 && !stopwords.has(word));
 }

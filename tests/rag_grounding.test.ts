@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { tokenize } from "@/lib/rag/retrieval";
 
 describe("RAG Grounding & Evidence Abstention Engine", () => {
   it("strictly abstains when query has zero evidence in source chunks", () => {
@@ -56,5 +57,13 @@ describe("RAG Grounding & Evidence Abstention Engine", () => {
     expect(response.answer).not.toContain("practice test");
     expect(response.strategicSuggestions).toHaveLength(1);
     expect(response.strategicSuggestions[0]).toContain("Take the practice test");
+  });
+
+  it("preserves critical admissions acronyms during tokenization", () => {
+    const tokens = tokenize("What is the TOPIK score required for GKS 2027?");
+    expect(tokens).toContain("topik");
+    expect(tokens).toContain("score");
+    expect(tokens).toContain("required");
+    expect(tokens).toContain("gks");
   });
 });
