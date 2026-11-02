@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#315C4B",
+  themeColor: "#EAF1F8",
 };
 
 export default function RootLayout({
@@ -19,8 +19,19 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-paper text-ink selection:bg-sage selection:text-ink">
-        {children}
+      <body className="min-h-screen font-sans text-ink antialiased relative">
+        {/* Luminous Ambient Light Layer (Rich Aurora Blobs for Glass Refraction) */}
+        <div className="ambient-glow-layer" aria-hidden="true">
+          <div className="aurora-blob aurora-blob-blue" />
+          <div className="aurora-blob aurora-blob-lavender" />
+          <div className="aurora-blob aurora-blob-rose" />
+          <div className="aurora-blob aurora-blob-cyan" />
+        </div>
+
+        {/* Foreground Content */}
+        <div className="relative z-10 page-transition min-h-screen flex flex-col">
+          {children}
+        </div>
       </body>
     </html>
   );

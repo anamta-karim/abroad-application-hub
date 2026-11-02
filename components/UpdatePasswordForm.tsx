@@ -10,17 +10,19 @@ export function UpdatePasswordForm() {
   const [state, formAction, isPending] = useActionState(updatePasswordAction, initialState);
 
   return (
-    <div className="w-full max-w-md bg-surface border border-rule rounded p-6 sm:p-8 space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-ink">Set new password</h1>
-        <p className="text-sm text-ink-muted">
-          Choose a new password for your account.
+    <div className="w-full max-w-md glass-stage rounded-3xl p-6 sm:p-8 space-y-6">
+      <div className="space-y-1.5">
+        <h1 className="text-2xl font-heading font-extrabold tracking-tight text-ink-deep">
+          Set new password
+        </h1>
+        <p className="text-xs text-ink-muted">
+          Choose a new secure password for your account.
         </p>
       </div>
 
       {state?.error && (
         <div
-          className="p-3 text-xs bg-paper border border-error text-error rounded"
+          className="p-3 text-xs rounded-xl bg-red-50/80 border border-red-200 text-red-800 font-medium"
           role="alert"
         >
           {state.error}
@@ -28,10 +30,10 @@ export function UpdatePasswordForm() {
       )}
 
       <form action={formAction} className="space-y-4">
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <label
             htmlFor="password"
-            className="block text-sm font-medium text-ink"
+            className="block text-xs font-bold text-ink-deep font-heading"
           >
             New password
           </label>
@@ -41,18 +43,18 @@ export function UpdatePasswordForm() {
             type="password"
             required
             autoComplete="new-password"
-            className="w-full h-11 px-3 text-sm bg-surface border border-rule rounded text-ink focus:outline-none focus:ring-2 focus:ring-forest"
+            className="w-full h-11 px-3.5 text-xs glass-input rounded-xl"
             aria-describedby="new-password-rules"
           />
-          <p id="new-password-rules" className="text-xs text-ink-muted">
+          <p id="new-password-rules" className="text-[11px] text-ink-subtle">
             At least 8 characters with both letters and numbers.
           </p>
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <label
             htmlFor="confirmPassword"
-            className="block text-sm font-medium text-ink"
+            className="block text-xs font-bold text-ink-deep font-heading"
           >
             Confirm new password
           </label>
@@ -62,27 +64,18 @@ export function UpdatePasswordForm() {
             type="password"
             required
             autoComplete="new-password"
-            className="w-full h-11 px-3 text-sm bg-surface border border-rule rounded text-ink focus:outline-none focus:ring-2 focus:ring-forest"
+            className="w-full h-11 px-3.5 text-xs glass-input rounded-xl"
           />
         </div>
 
         <button
           type="submit"
           disabled={isPending}
-          className="w-full h-11 px-4 text-sm font-medium text-surface bg-forest hover:bg-forest-hover rounded focus:outline-none focus:ring-2 focus:ring-forest transition-colors disabled:opacity-50"
+          className="w-full h-11 px-4 text-xs font-bold text-white bg-gradient-to-r from-brand to-brand-dark hover:from-brand-hover hover:to-brand rounded-xl shadow-md shadow-brand/20 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
         >
-          {isPending ? "Updating password..." : "Update password and continue"}
+          {isPending ? "Updating password..." : "Update password"}
         </button>
       </form>
-
-      <div className="pt-2 text-center text-sm text-ink-muted">
-        <Link
-          href="/login"
-          className="text-forest hover:underline focus:outline-none focus:underline"
-        >
-          Cancel and return to log in
-        </Link>
-      </div>
     </div>
   );
 }

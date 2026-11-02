@@ -10,23 +10,25 @@ export function ResetPasswordForm() {
   const [state, formAction, isPending] = useActionState(resetPasswordAction, initialState);
 
   return (
-    <div className="w-full max-w-md bg-surface border border-rule rounded p-6 sm:p-8 space-y-6">
-      <div className="space-y-1">
+    <div className="w-full max-w-md glass-stage rounded-3xl p-6 sm:p-8 space-y-6">
+      <div className="space-y-1.5">
         <Link
           href="/login"
-          className="text-xs text-ink-muted hover:text-forest focus:outline-none focus:underline"
+          className="text-xs font-semibold text-ink-muted hover:text-brand transition-colors inline-block"
         >
-          Back to log in
+          &larr; Back to sign in
         </Link>
-        <h1 className="text-2xl font-bold text-ink">Reset password</h1>
-        <p className="text-sm text-ink-muted">
-          Enter your email address to receive instructions to reset your password.
+        <h1 className="text-2xl font-heading font-extrabold tracking-tight text-ink-deep">
+          Reset password
+        </h1>
+        <p className="text-xs text-ink-muted">
+          Enter your email address to receive password reset instructions.
         </p>
       </div>
 
       {state?.error && (
         <div
-          className="p-3 text-xs bg-paper border border-error text-error rounded"
+          className="p-3 text-xs rounded-xl bg-red-50/80 border border-red-200 text-red-800 font-medium"
           role="alert"
         >
           {state.error}
@@ -36,24 +38,24 @@ export function ResetPasswordForm() {
       {state?.success ? (
         <div className="space-y-4">
           <div
-            className="p-3 text-xs bg-sage border border-forest text-forest rounded"
+            className="p-3.5 text-xs rounded-xl glass-badge-teal font-medium"
             role="status"
           >
             {state.message}
           </div>
           <Link
             href="/login"
-            className="block w-full h-11 text-center py-2.5 text-sm font-medium text-surface bg-forest hover:bg-forest-hover rounded focus:outline-none focus:ring-2 focus:ring-forest"
+            className="block w-full h-11 text-center py-3 text-xs font-bold text-white bg-gradient-to-r from-brand to-brand-dark hover:from-brand-hover hover:to-brand rounded-xl shadow-md shadow-brand/20 active:scale-95 transition-all"
           >
             Return to Log in
           </Link>
         </div>
       ) : (
         <form action={formAction} className="space-y-4">
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-ink"
+              className="block text-xs font-bold text-ink-deep font-heading"
             >
               Email address
             </label>
@@ -63,7 +65,7 @@ export function ResetPasswordForm() {
               type="email"
               required
               autoComplete="email"
-              className="w-full h-11 px-3 text-sm bg-surface border border-rule rounded text-ink focus:outline-none focus:ring-2 focus:ring-forest"
+              className="w-full h-11 px-3.5 text-xs glass-input rounded-xl"
               placeholder="you@example.com"
             />
           </div>
@@ -71,9 +73,9 @@ export function ResetPasswordForm() {
           <button
             type="submit"
             disabled={isPending}
-            className="w-full h-11 px-4 text-sm font-medium text-surface bg-forest hover:bg-forest-hover rounded focus:outline-none focus:ring-2 focus:ring-forest transition-colors disabled:opacity-50"
+            className="w-full h-11 px-4 text-xs font-bold text-white bg-gradient-to-r from-brand to-brand-dark hover:from-brand-hover hover:to-brand rounded-xl shadow-md shadow-brand/20 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
           >
-            {isPending ? "Sending reset link..." : "Send reset link"}
+            {isPending ? "Sending reset email..." : "Send reset instructions"}
           </button>
         </form>
       )}

@@ -97,4 +97,17 @@ describe("Database Schema and RLS Isolation Policy Verification", () => {
     const leakageCheck = userBVisible.find((r) => r.user_id === userA_id);
     expect(leakageCheck).toBeUndefined();
   });
+
+  it("verifies that opening_reminders migration includes RLS and user isolation", () => {
+    const remindersMigrationPath = path.join(
+      process.cwd(),
+      "supabase",
+      "migrations",
+      "20261102000000_opening_reminders.sql"
+    );
+    const remindersSql = fs.readFileSync(remindersMigrationPath, "utf-8");
+    expect(remindersSql).toMatch(/CREATE TABLE IF NOT EXISTS public\.opening_reminders\b/i);
+    expect(remindersSql).toMatch(/ALTER TABLE public\.opening_reminders ENABLE ROW LEVEL SECURITY/i);
+    expect(remindersSql).toMatch(/auth\.uid\(\)\s*=\s*user_id/i);
+  });
 });

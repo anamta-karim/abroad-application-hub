@@ -41,6 +41,23 @@ export type RequirementStatus =
 
 export type TaskStatus = "open" | "in_progress" | "done" | "dismissed";
 export type MessageRole = "user" | "assistant" | "system";
+export type ReminderStatus = "watching" | "opened" | "converted" | "dismissed";
+
+export interface OpeningReminder {
+  id: string;
+  user_id: string;
+  title: string;
+  record_type: RecordType;
+  institution_or_provider: string | null;
+  expected_open_date: string;
+  target_cycle: string | null;
+  official_url: string | null;
+  notes: string | null;
+  status: ReminderStatus;
+  converted_application_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface Database {
   public: {

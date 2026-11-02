@@ -12,6 +12,7 @@ const envSchema = z.object({
     .url("NEXT_PUBLIC_APP_URL must be a valid URL")
     .default("http://localhost:3000"),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+  GEMINI_API_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -26,6 +27,7 @@ export function validateEnv(): {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
   });
 
   if (!result.success) {
@@ -41,13 +43,18 @@ export function validateEnv(): {
   };
 }
 
+export function normalizeSupabaseUrl(url: string | undefined): string {
+  if (!url) return "";
+  return url.trim().replace(/\/rest\/v1\/?$/, "").replace(/\/+$/, "");
+}
+
 export function getPublicEnv() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
   return {
-    supabaseUrl: url || "",
+    supabaseUrl: url,
     supabaseAnonKey: anonKey || "",
     appUrl,
     isConfigured: Boolean(url && anonKey),

@@ -16,23 +16,25 @@ export function LoginForm({ returnTo = "/app", bannerMessage }: LoginFormProps) 
   const [state, formAction, isPending] = useActionState(signInAction, initialState);
 
   return (
-    <div className="w-full max-w-md bg-surface border border-rule rounded p-6 sm:p-8 space-y-6">
-      <div className="space-y-1">
+    <div className="w-full max-w-md glass-stage rounded-3xl p-6 sm:p-8 space-y-6">
+      <div className="space-y-1.5">
         <Link
           href="/"
-          className="text-xs text-ink-muted hover:text-forest focus:outline-none focus:underline"
+          className="text-xs font-semibold text-ink-muted hover:text-brand transition-colors inline-block"
         >
-          Back to home
+          &larr; Back to home
         </Link>
-        <h1 className="text-2xl font-bold text-ink">Log in to your workspace</h1>
-        <p className="text-sm text-ink-muted">
-          Enter your email and password to access your applications.
+        <h1 className="text-2xl font-heading font-extrabold tracking-tight text-ink-deep">
+          Welcome back
+        </h1>
+        <p className="text-xs text-ink-muted">
+          Sign in to your study-abroad personal workspace.
         </p>
       </div>
 
       {bannerMessage && (
         <div
-          className="p-3 text-xs bg-paper border border-warning text-ink rounded"
+          className="p-3 text-xs rounded-xl glass-badge-teal font-medium"
           role="alert"
         >
           {bannerMessage}
@@ -41,7 +43,7 @@ export function LoginForm({ returnTo = "/app", bannerMessage }: LoginFormProps) 
 
       {state?.error && (
         <div
-          className="p-3 text-xs bg-paper border border-error text-error rounded"
+          className="p-3 text-xs rounded-xl bg-red-50/80 border border-red-200 text-red-800 font-medium"
           role="alert"
         >
           {state.error}
@@ -51,10 +53,10 @@ export function LoginForm({ returnTo = "/app", bannerMessage }: LoginFormProps) 
       <form action={formAction} className="space-y-4">
         <input type="hidden" name="returnTo" value={returnTo} />
 
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <label
             htmlFor="email"
-            className="block text-sm font-medium text-ink"
+            className="block text-xs font-bold text-ink-deep font-heading"
           >
             Email address
           </label>
@@ -64,22 +66,22 @@ export function LoginForm({ returnTo = "/app", bannerMessage }: LoginFormProps) 
             type="email"
             required
             autoComplete="email"
-            className="w-full h-11 px-3 text-sm bg-surface border border-rule rounded text-ink focus:outline-none focus:ring-2 focus:ring-forest"
+            className="w-full h-11 px-3.5 text-xs glass-input rounded-xl"
             placeholder="you@example.com"
           />
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <div className="flex justify-between items-center">
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-ink"
+              className="block text-xs font-bold text-ink-deep font-heading"
             >
               Password
             </label>
             <Link
               href="/reset-password"
-              className="text-xs text-forest hover:underline focus:outline-none focus:underline"
+              className="text-xs font-semibold text-brand hover:underline"
             >
               Forgot password?
             </Link>
@@ -90,32 +92,32 @@ export function LoginForm({ returnTo = "/app", bannerMessage }: LoginFormProps) 
             type="password"
             required
             autoComplete="current-password"
-            className="w-full h-11 px-3 text-sm bg-surface border border-rule rounded text-ink focus:outline-none focus:ring-2 focus:ring-forest"
+            className="w-full h-11 px-3.5 text-xs glass-input rounded-xl"
           />
         </div>
 
         <button
           type="submit"
           disabled={isPending}
-          className="w-full h-11 px-4 text-sm font-medium text-surface bg-forest hover:bg-forest-hover rounded focus:outline-none focus:ring-2 focus:ring-forest transition-colors disabled:opacity-50"
+          className="w-full h-11 px-4 text-xs font-bold text-white bg-gradient-to-r from-brand to-brand-dark hover:from-brand-hover hover:to-brand rounded-xl shadow-md shadow-brand/20 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
         >
-          {isPending ? "Logging in..." : "Log in"}
+          {isPending ? "Signing in..." : "Sign in"}
         </button>
       </form>
 
       <div className="relative flex py-1 items-center">
-        <div className="flex-grow border-t border-rule"></div>
-        <span className="flex-shrink mx-3 text-xs text-ink-muted">or</span>
-        <div className="flex-grow border-t border-rule"></div>
+        <div className="flex-grow border-t border-glass-borderSubtle"></div>
+        <span className="flex-shrink mx-3 text-xs font-semibold text-ink-subtle">or</span>
+        <div className="flex-grow border-t border-glass-borderSubtle"></div>
       </div>
 
       <GoogleSignInButton returnTo={returnTo} />
 
-      <div className="pt-2 text-center text-sm text-ink-muted">
+      <div className="pt-2 text-center text-xs text-ink-muted">
         Don&apos;t have an account?{" "}
         <Link
           href="/signup"
-          className="text-forest font-medium hover:underline focus:outline-none focus:underline"
+          className="text-brand font-bold hover:underline"
         >
           Sign up
         </Link>
