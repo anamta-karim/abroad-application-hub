@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
 import { AccountDataManagement } from "@/components/AccountDataManagement";
+import { CalendarFeedSettings } from "@/components/CalendarFeedSettings";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -12,6 +14,23 @@ export default async function SettingsPage() {
     .select("display_name, updated_at")
     .eq("id", user?.id || "")
     .single();
+
+  // Private calendar feed (table added by 20261115000000_calendar_feeds.sql)
+  const { data: feedData, error: feedError } = await supabase
+    .from("calendar_feeds" as any)
+    .select("token")
+    .eq("user_id", user?.id || "")
+    .maybeSingle();
+  const feed = feedData as { token: string } | null;
+  const feedMigrationMissing = Boolean(
+    feedError && (feedError.code === "PGRST205" || feedError.code === "42P01")
+  );
+
+  // Public origin for the feed link (respects the deployment's host)
+  const h = await headers();
+  const host = h.get("x-forwarded-host") || h.get("host") || "localhost:3000";
+  const proto = h.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
+  const origin = `${proto}://${host}`;
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -41,6 +60,15 @@ export default async function SettingsPage() {
               </span>
             </div>
           </div>
+        </div>
+
+        <div className="pt-6 border-t border-glass-borderSubtle space-y-4">
+          <h2 className="font-heading font-bold text-base text-ink-deep">Calendar Sync</h2>
+          <CalendarFeedSettings
+            initialToken={feed?.token ?? null}
+            origin={origin}
+            migrationMissing={feedMigrationMissing}
+          />
         </div>
 
         <div className="pt-6 border-t border-glass-borderSubtle space-y-4">

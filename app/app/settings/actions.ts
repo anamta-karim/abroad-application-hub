@@ -54,6 +54,9 @@ export async function deleteUserDataAndAccountAction(): Promise<SettingsActionRe
     // 5. Delete opening reminders
     await supabase.from("opening_reminders" as any).delete().eq("user_id", userId);
 
+    // 5b. Revoke the private calendar feed URL
+    await supabase.from("calendar_feeds" as any).delete().eq("user_id", userId);
+
     // 6. Delete user profile
     await supabase.from("profiles").delete().eq("id", userId);
 
@@ -118,4 +121,64 @@ export async function exportUserDataAction(): Promise<{ error?: string; data?: a
   };
 
   return { data: exportPayload };
+}
+
+// ── Private calendar feed ──
+
+export interface CalendarFeedResult {
+  error?: string;
+  token?: string | null;
+}
+
+const FEED_MIGRATION_HINT =
+  "The calendar feed needs the 20261115000000_calendar_feeds.sql migration. Run it in the Supabase SQL Editor, then try again.";
+
+function isMissingTable(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  const msg = error.message || "";
+  return (
+    error.code === "PGRST205" ||
+    error.code === "42P01" ||
+    (/calendar_feeds/.test(msg) && /not find|does not exist/i.test(msg))
+  );
+}
+
+/**
+ * Creates the user's feed token, or replaces it (which breaks the old URL).
+ */
+export async function regenerateCalendarFeedAction(): Promise<CalendarFeedResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Authentication required." };
+
+  const { randomBytes } = await import("crypto");
+  const token = randomBytes(32).toString("base64url"); // 43 URL-safe characters
+
+  const { error } = await supabase
+    .from("calendar_feeds" as any)
+    .upsert({ user_id: user.id, token, created_at: new Date().toISOString() }, { onConflict: "user_id" });
+
+  if (error) {
+    return { error: isMissingTable(error) ? FEED_MIGRATION_HINT : error.message };
+  }
+  return { token };
+}
+
+/**
+ * Deletes the feed token; subscribed calendars stop updating.
+ */
+export async function disableCalendarFeedAction(): Promise<CalendarFeedResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Authentication required." };
+
+  const { error } = await supabase.from("calendar_feeds" as any).delete().eq("user_id", user.id);
+  if (error) {
+    return { error: isMissingTable(error) ? FEED_MIGRATION_HINT : error.message };
+  }
+  return { token: null };
 }

@@ -2,6 +2,9 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ApplicationDeck } from "@/components/ApplicationDeck";
 import { OpeningNudgeBanner } from "@/components/OpeningNudgeBanner";
+import { ThisWeekPanel } from "@/components/ThisWeekPanel";
+import { buildWeeklyActions } from "@/lib/weekly";
+import { todayString } from "@/lib/calendar";
 import type { OpeningReminder } from "@/types/database";
 
 export default async function DashboardPage() {
@@ -45,9 +48,23 @@ export default async function DashboardPage() {
   // Query document requirements across user applications
   const { data: docRequirementsData } = await supabase
     .from("document_requirements")
-    .select("id, application_id, status");
+    .select("id, application_id, status, document_type, due_date");
 
   const docRequirements = docRequirementsData || [];
+
+  // Open tasks feed the "This week" panel
+  const { data: tasksData } = await supabase
+    .from("tasks")
+    .select("id, application_id, title, due_date, status")
+    .in("status", ["open", "in_progress"]);
+
+  const weeklyItems = buildWeeklyActions({
+    apps: applications,
+    requirements: docRequirements,
+    tasks: tasksData || [],
+    reminders,
+    today: todayString(),
+  });
 
   const totalWorkspaceDocs = docRequirements.length;
   const readyWorkspaceDocs = docRequirements.filter(
@@ -191,6 +208,9 @@ export default async function DashboardPage() {
         /* POPULATED WORKSPACE (Stats, Deadlines & Application Deck)         */
         /* ═════════════════════════════════════════════════════════════════ */
         <div className="space-y-8">
+          {/* What needs attention now */}
+          <ThisWeekPanel items={weeklyItems} />
+
           {/* Summary Metric Strip */}
           <section aria-label="Workspace summary" className="glass-card rounded-2xl p-6 grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div className="space-y-1">
@@ -201,7 +221,8 @@ export default async function DashboardPage() {
                 {activeApplications.length}
               </div>
               <span className="text-xs text-ink-muted block">
-                {programsCount} programs &bull; {scholarshipsCount} scholarships
+                {programsCount} {programsCount === 1 ? "program" : "programs"} &bull; {scholarshipsCount}{" "}
+                {scholarshipsCount === 1 ? "scholarship" : "scholarships"}
               </span>
             </div>
 
