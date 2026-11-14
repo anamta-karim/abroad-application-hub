@@ -8,7 +8,7 @@
 ![React](https://img.shields.io/badge/React-19-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6.svg)
 ![Supabase](https://img.shields.io/badge/backend-Supabase_PostgreSQL-3ECF8E.svg)
-![Tests](https://img.shields.io/badge/tests-vitest_34_passed-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-vitest_38_passed-brightgreen.svg)
 ![Design](https://img.shields.io/badge/design-Cool_Blue_Glassmorphism-60A5FA.svg)
 
 [🚀 **Visit Live App**](https://abroad-application-hub.vercel.app)  ·  [Getting started](#getting-started)  ·  [How it works](#how-it-works)  ·  [Honest by design](#honest-by-design)
@@ -56,6 +56,7 @@ When a requirement is missing from your document, it says so openly instead of m
 
 | Feature | You do this | You get this |
 |---|---|---|
+| ⚡ **Auto-Fill & Discovery API** | Paste any admissions link or pick an open scholarship preset | Instant extraction of title, provider, country, degree level, deadline, and funding notes to auto-fill the form with 1 click |
 | 🎯 **Dual-Mode Application Tracker** | Add an open program or an upcoming cycle | Live deadline countdowns, status tags (*Preparing*, *Submitted*, *Accepted*), and clean organization between active applications and your **Intake Watchlist** |
 | 🔔 **Opening Reminders & Nudges** | Set an estimated launch date for a program that isn't out yet | Watchlist reminders with smart dashboard nudge alerts when the portal opening window arrives, plus 1-click conversion into an active application |
 | 📄 **Official Source Ingestion** | Paste an admissions link or upload a prospectus PDF | Safe text extraction stored strictly in your account with section titles, page markers, and document hashing |
@@ -230,6 +231,8 @@ All 34 security, grounding, and isolation tests will run locally.
 ```
 abroad-application-hub/
 ├── app/                              # Next.js 15 App Router pages & actions
+│   ├── api/                          # REST API route handlers
+│   │   └── admissions/fetch-details/ # Auto-fetch metadata from official URLs
 │   ├── app/                          # Authenticated workspace
 │   │   ├── applications/             # Application details, new, and edit forms
 │   │   │   ├── [id]/                 # Single application overview & source manager
@@ -243,15 +246,16 @@ abroad-application-hub/
 ├── components/                       # UI components (Cool Blue Glassmorphism)
 │   ├── ApplicationDeck.tsx           # Multi-tab application tracker & watchlist
 │   ├── ApplicationPrepHub.tsx        # Grounded Prep Studio, Q&A, and markdown viewer
-│   ├── NewApplicationForm.tsx        # Dual-mode open vs. reminder form
+│   ├── NewApplicationForm.tsx        # Dual-mode form with 1-click URL autofill & discovery
 │   ├── OpeningNudgeBanner.tsx        # Automated dashboard intake alerts
 │   └── OpeningReminderModal.tsx      # Quick watchlist reminder modal
 ├── lib/                              # Core engines
+│   ├── admissions/                   # Verified scholarship presets & metadata types
 │   ├── ingestion/                    # SSRF defense, HTML parser, and PDF chunker
 │   ├── rag/                          # Grounded retrieval engine & blueprint synthesis
 │   └── supabase/                     # Browser and server Supabase clients
 ├── supabase/migrations/              # SQL schema, RLS policies, and triggers
-├── tests/                            # Automated test suite (Vitest)
+├── tests/                            # Automated test suite (Vitest - 38 tests)
 └── types/database.ts                 # TypeScript database interfaces
 ```
 

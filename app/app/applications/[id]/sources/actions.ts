@@ -7,8 +7,12 @@ import { extractCleanTextFromHtml } from "@/lib/ingestion/html";
 import { extractTextFromPdf } from "@/lib/ingestion/pdf";
 import { chunkDocumentText, computeSha256 } from "@/lib/ingestion/chunker";
 import { extractCandidateFacts } from "@/lib/ingestion/extractor";
+import { userOwnsApplications, APPLICATION_NOT_FOUND } from "@/lib/supabase/ownership";
 import type { ActionResponse } from "@/app/app/applications/actions";
 import type { ReviewState } from "@/types/database";
+
+/** Private bucket created in 20261101000000_init_schema.sql. */
+const SOURCES_BUCKET = "application-sources";
 
 /**
  * Ingest an official program or scholarship webpage URL with SSRF protection.
@@ -30,6 +34,10 @@ export async function ingestWebpageAction(
   const rawUrl = (formData.get("url") as string)?.trim();
   if (!rawUrl) {
     return { error: "Please enter a valid website URL." };
+  }
+
+  if (!(await userOwnsApplications(supabase, user.id, [applicationId]))) {
+    return { error: APPLICATION_NOT_FOUND };
   }
 
   // 1. SSRF Pre-flight Validation
@@ -198,6 +206,10 @@ export async function ingestPdfAction(
     return { error: "Only official PDF documents are accepted." };
   }
 
+  if (!(await userOwnsApplications(supabase, user.id, [applicationId]))) {
+    return { error: APPLICATION_NOT_FOUND };
+  }
+
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
   const contentHash = computeSha256(buffer.toString("binary"));
@@ -222,23 +234,29 @@ export async function ingestPdfAction(
     return { error: sourceInsertError?.message || "Failed to initialize source record." };
   }
 
+  // Path layout required by the bucket's storage policies:
+  // {user_id}/{application_id}/{source_id}/{safe_filename}
+  const storagePath = `${user.id}/${applicationId}/${source.id}/${sanitizedName}`;
+  let uploaded = false;
+
   try {
-    // 2. Upload to private user-scoped storage path
-    const storagePath = `${user.id}/${source.id}_${sanitizedName}`;
+    // 2. Upload the original PDF to the private, user-scoped bucket
     const { error: storageError } = await supabase.storage
-      .from("sources")
+      .from(SOURCES_BUCKET)
       .upload(storagePath, buffer, {
         contentType: "application/pdf",
         upsert: false,
       });
 
-    // If bucket doesn't exist yet, we still extract text and save snapshot!
-    if (!storageError) {
-      await supabase
-        .from("sources")
-        .update({ storage_path: storagePath })
-        .eq("id", source.id);
+    if (storageError) {
+      throw new Error(`Could not store the PDF file: ${storageError.message}`);
     }
+    uploaded = true;
+
+    await supabase
+      .from("sources")
+      .update({ storage_path: storagePath })
+      .eq("id", source.id);
 
     // 3. Extract text and page metadata from PDF
     const { title: extractedTitle, pages, fullText } = extractTextFromPdf(buffer);
@@ -320,10 +338,16 @@ export async function ingestPdfAction(
     revalidatePath(`/app/applications/${applicationId}`);
     return { success: true };
   } catch (err: any) {
+    // Don't leave an orphaned file behind when extraction fails after upload
+    if (uploaded) {
+      await supabase.storage.from(SOURCES_BUCKET).remove([storagePath]);
+    }
+
     await supabase
       .from("sources")
       .update({
         ingestion_status: "failed",
+        storage_path: null,
         error_code: err.message?.slice(0, 200) || "PDF extraction error",
       })
       .eq("id", source.id);
@@ -338,7 +362,7 @@ export async function ingestPdfAction(
  */
 export async function reviewFactAction(
   factId: string,
-  applicationId: string,
+  _applicationId: string, // kept for caller compatibility; the fact's own application_id is used
   action: "confirm" | "edit" | "reject",
   editedValue?: string
 ): Promise<ActionResponse> {
@@ -358,9 +382,12 @@ export async function reviewFactAction(
     .eq("id", factId)
     .single();
 
-  if (fetchError || !fact) {
+  if (fetchError || !fact || fact.user_id !== user.id) {
     return { error: "Extracted fact not found." };
   }
+
+  // Always act on the application the fact actually belongs to, never a client-supplied id
+  const factApplicationId = fact.application_id;
 
   let newReviewState: ReviewState = "confirmed";
   let updatedValue = fact.value;
@@ -398,14 +425,14 @@ export async function reviewFactAction(
       const { data: existingReq } = await supabase
         .from("document_requirements")
         .select("id")
-        .eq("application_id", applicationId)
+        .eq("application_id", factApplicationId)
         .eq("document_type", finalVal)
         .maybeSingle();
 
       if (!existingReq) {
         await supabase.from("document_requirements").insert({
           user_id: user.id,
-          application_id: applicationId,
+          application_id: factApplicationId,
           requirement_fact_id: fact.id,
           document_type: finalVal,
           status: "not_started",
@@ -426,12 +453,12 @@ export async function reviewFactAction(
             deadline: isoDate,
             verification_state: "confirmed",
           })
-          .eq("id", applicationId);
+          .eq("id", factApplicationId);
       }
     }
   }
 
-  revalidatePath(`/app/applications/${applicationId}`);
+  revalidatePath(`/app/applications/${factApplicationId}`);
   return { success: true };
 }
 
@@ -451,13 +478,26 @@ export async function deleteSourceAction(
     return { error: "Authentication required" };
   }
 
+  const { data: source } = await supabase
+    .from("sources")
+    .select("storage_path")
+    .eq("id", sourceId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("sources")
     .delete()
-    .eq("id", sourceId);
+    .eq("id", sourceId)
+    .eq("user_id", user.id);
 
   if (error) {
     return { error: error.message };
+  }
+
+  // Remove the stored PDF too (database cascade does not reach Storage)
+  if (source?.storage_path) {
+    await supabase.storage.from(SOURCES_BUCKET).remove([source.storage_path]);
   }
 
   revalidatePath(`/app/applications/${applicationId}`);

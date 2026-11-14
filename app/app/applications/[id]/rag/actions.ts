@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { userOwnsApplications, APPLICATION_NOT_FOUND } from "@/lib/supabase/ownership";
 import { generateGroundedAnswer, type GroundedResponse } from "@/lib/rag/engine";
 
 export interface ChatActionResult {
@@ -29,6 +30,10 @@ export async function askGroundedQuestionAction(
   const trimmedQuestion = question.trim();
   if (!trimmedQuestion) {
     return { error: "Please enter a question or topic." };
+  }
+
+  if (!(await userOwnsApplications(supabase, user.id, [applicationId]))) {
+    return { error: APPLICATION_NOT_FOUND };
   }
 
   // 1. Get or create conversation for this application

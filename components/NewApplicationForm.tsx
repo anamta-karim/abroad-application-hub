@@ -6,14 +6,49 @@ import Link from "next/link";
 import {
   createApplicationAction,
   createOpeningReminderAction,
+  fetchAdmissionsDetailsAction,
   type ActionResponse,
 } from "@/app/app/applications/actions";
+import {
+  POPULAR_SCHOLARSHIP_PRESETS,
+  type ScholarshipPreset,
+} from "@/lib/admissions/presets";
 
 const initialState: ActionResponse = {};
 
-export function NewApplicationForm() {
+/** Fields that can be pre-filled, e.g. from a Discover search result link. */
+export interface NewApplicationPrefill {
+  title?: string;
+  recordType?: "program" | "scholarship";
+  institution?: string;
+  country?: string;
+  degreeLevel?: string;
+  officialUrl?: string;
+}
+
+export function NewApplicationForm({ prefill = {} }: { prefill?: NewApplicationPrefill }) {
   const router = useRouter();
   const [entryMode, setEntryMode] = useState<"live" | "reminder">("live");
+
+  // Controlled form state for 1-click autofill and editing
+  const [fields, setFields] = useState({
+    title: prefill.title || "",
+    recordType: (prefill.recordType || "program") as "program" | "scholarship",
+    institution: prefill.institution || "",
+    country: prefill.country || "",
+    degreeLevel: prefill.degreeLevel || "Master's",
+    deadline: "",
+    expectedOpenDate: "",
+    targetCycle: "",
+    officialUrl: prefill.officialUrl || "",
+    notes: "",
+  });
+
+  const [autofillUrl, setAutofillUrl] = useState("");
+  const [isFetchingUrl, setIsFetchingUrl] = useState(false);
+  const [fetchSuccessMsg, setFetchSuccessMsg] = useState<string | null>(null);
+  const [fetchErrorMsg, setFetchErrorMsg] = useState<string | null>(null);
+  const [showPresets, setShowPresets] = useState(false);
 
   const [liveState, liveAction, isLivePending] = useActionState(createApplicationAction, initialState);
   const [reminderState, reminderAction, isReminderPending] = useActionState(createOpeningReminderAction, initialState);
@@ -24,9 +59,166 @@ export function NewApplicationForm() {
     }
   }, [reminderState?.success, router]);
 
+  async function handleFetchUrl(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    const url = autofillUrl.trim();
+    if (!url) return;
+
+    setIsFetchingUrl(true);
+    setFetchSuccessMsg(null);
+    setFetchErrorMsg(null);
+
+    const res = await fetchAdmissionsDetailsAction(url);
+    if (!res.success || !res.data) {
+      setFetchErrorMsg(res.error || "Unable to extract admissions details from this URL. Please verify the link or enter details manually.");
+    } else {
+      const data = res.data;
+      setFields((prev) => ({
+        ...prev,
+        title: data.title || prev.title,
+        recordType: data.recordType || prev.recordType,
+        institution: data.institution || prev.institution,
+        country: data.country || prev.country,
+        degreeLevel: data.degreeLevel || prev.degreeLevel,
+        deadline: data.deadline || prev.deadline,
+        expectedOpenDate: data.deadline || prev.expectedOpenDate,
+        targetCycle: data.targetCycle || prev.targetCycle,
+        officialUrl: data.officialUrl || url,
+        notes: data.notes || prev.notes,
+      }));
+      setFetchSuccessMsg(`✨ Auto-filled: "${data.title}" at ${data.institution || "Institution"} (${data.country}). Review fields below.`);
+    }
+
+    setIsFetchingUrl(false);
+  }
+
+  function handleSelectPreset(preset: ScholarshipPreset) {
+    setFields((prev) => ({
+      ...prev,
+      title: preset.title,
+      recordType: preset.recordType,
+      institution: preset.institution,
+      country: preset.country,
+      degreeLevel: preset.degreeLevel,
+      targetCycle: preset.targetCycle,
+      officialUrl: preset.officialUrl,
+      notes: preset.notes,
+    }));
+    setFetchErrorMsg(null);
+    setFetchSuccessMsg(`✨ 1-Click imported "${preset.title}". Enter your target deadline or cycle date below.`);
+    setShowPresets(false);
+  }
+
   return (
     <div className="space-y-6">
-      {/* ── Mode Selection: Live Application vs Opening Watchlist ── */}
+      {/* ── 1. Smart Autofill & Discovery API Bar ── */}
+      <section className="glass-card rounded-2xl p-4 sm:p-5 space-y-3.5 border border-brand/25 bg-white/70 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="space-y-0.5">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-extrabold font-heading text-ink-deep flex items-center gap-1.5">
+                <span>⚡</span>
+                <span>Auto-Fill from Official Webpage</span>
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-soft text-brand-dark">
+                Fast &amp; Accurate
+              </span>
+            </div>
+            <p className="text-xs text-ink-muted">
+              Paste any university prospectus or scholarship URL to extract details automatically.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowPresets(!showPresets)}
+            className="text-xs font-bold text-brand hover:text-brand-dark transition-colors inline-flex items-center gap-1 self-start sm:self-auto cursor-pointer"
+          >
+            <span>{showPresets ? "Hide popular scholarships" : "Or browse open scholarships"}</span>
+            <span>{showPresets ? "▲" : "▼"}</span>
+          </button>
+        </div>
+
+        {/* URL Input Bar */}
+        <form onSubmit={handleFetchUrl} className="flex flex-col sm:flex-row gap-2">
+          <input
+            type="url"
+            value={autofillUrl}
+            onChange={(e) => setAutofillUrl(e.target.value)}
+            placeholder="https://www.university.ac.uk/admissions/msc-program..."
+            className="flex-1 h-10 px-3.5 text-xs sm:text-sm glass-input rounded-xl text-ink-deep placeholder:text-ink-subtle"
+          />
+          <button
+            type="submit"
+            disabled={isFetchingUrl || !autofillUrl.trim()}
+            className="h-10 px-4 text-xs font-bold text-white bg-gradient-to-r from-brand to-brand-dark hover:from-brand-hover hover:to-brand rounded-xl shadow-sm transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center space-x-1.5 whitespace-nowrap"
+          >
+            <span>{isFetchingUrl ? "Extracting..." : "Auto-Fill Details"}</span>
+            <span aria-hidden="true">&rarr;</span>
+          </button>
+        </form>
+
+        {/* Feedback Alerts */}
+        {fetchSuccessMsg && (
+          <div className="p-3 text-xs rounded-xl bg-teal-50 border border-teal-200 text-teal-900 font-medium animate-fade-in flex items-center justify-between">
+            <span>{fetchSuccessMsg}</span>
+            <button
+              type="button"
+              onClick={() => setFetchSuccessMsg(null)}
+              className="text-teal-700 hover:text-teal-900 text-sm font-bold ml-2"
+            >
+              &times;
+            </button>
+          </div>
+        )}
+
+        {fetchErrorMsg && (
+          <div className="p-3 text-xs rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-medium animate-fade-in flex items-center justify-between">
+            <span>{fetchErrorMsg}</span>
+            <button
+              type="button"
+              onClick={() => setFetchErrorMsg(null)}
+              className="text-amber-700 hover:text-amber-900 text-sm font-bold ml-2"
+            >
+              &times;
+            </button>
+          </div>
+        )}
+
+        {/* Open Scholarships Directory (1-Click Presets) */}
+        {showPresets && (
+          <div className="pt-2 border-t border-glass-borderSubtle space-y-2 animate-fade-in">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-ink-subtle block font-heading">
+                1-Click Popular Scholarships Directory
+              </span>
+              <Link href="/app/discover" className="text-[11px] font-bold text-brand hover:text-brand-dark">
+                Search universities &amp; programs →
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
+              {POPULAR_SCHOLARSHIP_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => handleSelectPreset(preset)}
+                  className="p-2.5 rounded-xl border border-glass-borderSubtle bg-white/50 hover:bg-white text-left transition-all hover:border-brand/40 group cursor-pointer"
+                >
+                  <div className="flex items-center justify-between text-xs font-bold text-ink-deep group-hover:text-brand">
+                    <span className="truncate pr-1">{preset.title}</span>
+                    <span className="text-[10px] text-ink-muted shrink-0">{preset.country}</span>
+                  </div>
+                  <p className="text-[11px] text-ink-muted truncate mt-0.5">
+                    {preset.institution}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* ── 2. Mode Selection: Live Application vs Opening Watchlist ── */}
       <div className="space-y-2">
         <label className="block text-xs font-bold text-ink-deep font-heading uppercase tracking-wider">
           What is the current status of this application?
@@ -96,6 +288,8 @@ export function NewApplicationForm() {
               name="title"
               type="text"
               required
+              value={fields.title}
+              onChange={(e) => setFields({ ...fields, title: e.target.value })}
               placeholder="e.g. Master of Computer Science, Merit Scholarship"
               className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
             />
@@ -109,7 +303,8 @@ export function NewApplicationForm() {
             <select
               id="live-recordType"
               name="recordType"
-              defaultValue="program"
+              value={fields.recordType}
+              onChange={(e) => setFields({ ...fields, recordType: e.target.value as "program" | "scholarship" })}
               className="w-full h-11 px-3.5 text-sm glass-input rounded-xl bg-white/90"
             >
               <option value="program">University Degree Program</option>
@@ -127,6 +322,8 @@ export function NewApplicationForm() {
                 id="live-institution"
                 name="institution"
                 type="text"
+                value={fields.institution}
+                onChange={(e) => setFields({ ...fields, institution: e.target.value })}
                 placeholder="e.g. University name or provider"
                 className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
               />
@@ -140,7 +337,9 @@ export function NewApplicationForm() {
                 id="live-country"
                 name="country"
                 type="text"
-                placeholder="e.g. Germany"
+                value={fields.country}
+                onChange={(e) => setFields({ ...fields, country: e.target.value })}
+                placeholder="e.g. United Kingdom, Germany, Canada"
                 className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
               />
             </div>
@@ -156,7 +355,9 @@ export function NewApplicationForm() {
                 id="live-degreeLevel"
                 name="degreeLevel"
                 type="text"
-                placeholder="e.g. Master, PhD, Bachelor"
+                value={fields.degreeLevel}
+                onChange={(e) => setFields({ ...fields, degreeLevel: e.target.value })}
+                placeholder="e.g. Master's, PhD, Bachelor's"
                 className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
               />
             </div>
@@ -170,6 +371,8 @@ export function NewApplicationForm() {
                 name="deadline"
                 type="date"
                 required
+                value={fields.deadline}
+                onChange={(e) => setFields({ ...fields, deadline: e.target.value })}
                 className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
               />
             </div>
@@ -184,12 +387,30 @@ export function NewApplicationForm() {
               id="live-officialUrl"
               name="officialUrl"
               type="url"
+              value={fields.officialUrl}
+              onChange={(e) => setFields({ ...fields, officialUrl: e.target.value })}
               placeholder="https://..."
               className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
             />
             <p className="text-[11px] text-ink-muted">
               Official admissions portal link used for grounding requirements and verified dates.
             </p>
+          </div>
+
+          {/* Personal Notes & Extracted Funding */}
+          <div className="space-y-1.5">
+            <label htmlFor="live-notes" className="block text-xs font-bold text-ink-deep font-heading">
+              Overview &amp; Funding Notes (optional)
+            </label>
+            <textarea
+              id="live-notes"
+              name="userNotes"
+              rows={2}
+              value={fields.notes}
+              onChange={(e) => setFields({ ...fields, notes: e.target.value })}
+              placeholder="Key notes, eligibility criteria, or funding benefits..."
+              className="w-full p-3 text-sm glass-input rounded-xl"
+            />
           </div>
 
           {/* Actions */}
@@ -233,6 +454,8 @@ export function NewApplicationForm() {
               name="title"
               type="text"
               required
+              value={fields.title}
+              onChange={(e) => setFields({ ...fields, title: e.target.value })}
               placeholder="e.g. Program or scholarship title"
               className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
             />
@@ -246,7 +469,8 @@ export function NewApplicationForm() {
             <select
               id="reminder-recordType"
               name="recordType"
-              defaultValue="scholarship"
+              value={fields.recordType}
+              onChange={(e) => setFields({ ...fields, recordType: e.target.value as "program" | "scholarship" })}
               className="w-full h-11 px-3.5 text-sm glass-input rounded-xl bg-white/90"
             >
               <option value="scholarship">Scholarship / Fellowship</option>
@@ -264,6 +488,8 @@ export function NewApplicationForm() {
                 id="reminder-institution"
                 name="institution"
                 type="text"
+                value={fields.institution}
+                onChange={(e) => setFields({ ...fields, institution: e.target.value })}
                 placeholder="e.g. University name or scholarship provider"
                 className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
               />
@@ -277,6 +503,8 @@ export function NewApplicationForm() {
                 id="reminder-targetCycle"
                 name="targetCycle"
                 type="text"
+                value={fields.targetCycle}
+                onChange={(e) => setFields({ ...fields, targetCycle: e.target.value })}
                 placeholder="e.g. Fall 2026, Spring 2027"
                 className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
               />
@@ -293,6 +521,8 @@ export function NewApplicationForm() {
               name="expectedOpenDate"
               type="date"
               required
+              value={fields.expectedOpenDate}
+              onChange={(e) => setFields({ ...fields, expectedOpenDate: e.target.value })}
               className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
             />
             <p className="text-[11px] text-ink-muted">
@@ -309,6 +539,8 @@ export function NewApplicationForm() {
               id="reminder-notes"
               name="notes"
               rows={2}
+              value={fields.notes}
+              onChange={(e) => setFields({ ...fields, notes: e.target.value })}
               placeholder="e.g. Expected announcement window or past cycle timeline"
               className="w-full p-3 text-sm glass-input rounded-xl"
             />
@@ -323,6 +555,8 @@ export function NewApplicationForm() {
               id="reminder-officialUrl"
               name="officialUrl"
               type="url"
+              value={fields.officialUrl}
+              onChange={(e) => setFields({ ...fields, officialUrl: e.target.value })}
               placeholder="https://..."
               className="w-full h-11 px-3.5 text-sm glass-input rounded-xl"
             />

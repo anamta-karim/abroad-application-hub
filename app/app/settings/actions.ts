@@ -24,6 +24,21 @@ export async function deleteUserDataAndAccountAction(): Promise<SettingsActionRe
   const userId = user.id;
 
   try {
+    // 0. Delete stored PDF files first (database cascades do not reach Storage)
+    const { data: storedSources } = await supabase
+      .from("sources")
+      .select("storage_path")
+      .eq("user_id", userId)
+      .not("storage_path", "is", null);
+
+    const storagePaths = (storedSources || [])
+      .map((s) => s.storage_path)
+      .filter((p): p is string => Boolean(p));
+
+    if (storagePaths.length > 0) {
+      await supabase.storage.from("application-sources").remove(storagePaths);
+    }
+
     // 1. Delete application records (cascades to requirements, tasks, links, status_history)
     await supabase.from("applications").delete().eq("user_id", userId);
 

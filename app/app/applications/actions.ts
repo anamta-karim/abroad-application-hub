@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { userOwnsApplications, APPLICATION_NOT_FOUND } from "@/lib/supabase/ownership";
 import type {
   RecordType,
   ApplicationStatus,
@@ -254,6 +255,10 @@ export async function addRequirementAction(
     return { error: "Please enter the document name or requirement." };
   }
 
+  if (!(await userOwnsApplications(supabase, user.id, [applicationId]))) {
+    return { error: APPLICATION_NOT_FOUND };
+  }
+
   const { error } = await supabase.from("document_requirements").insert({
     user_id: user.id,
     application_id: applicationId,
@@ -352,6 +357,10 @@ export async function addTaskAction(
     return { error: "Please enter a task title." };
   }
 
+  if (!(await userOwnsApplications(supabase, user.id, [applicationId]))) {
+    return { error: APPLICATION_NOT_FOUND };
+  }
+
   const { error } = await supabase.from("tasks").insert({
     user_id: user.id,
     application_id: applicationId,
@@ -442,6 +451,10 @@ export async function linkApplicationsAction(
 
   if (!user) {
     return { error: "Authentication required" };
+  }
+
+  if (!(await userOwnsApplications(supabase, user.id, [programId, scholarshipId]))) {
+    return { error: APPLICATION_NOT_FOUND };
   }
 
   const { error } = await supabase.from("application_links").insert({
@@ -605,7 +618,6 @@ export async function createOpeningReminderAction(
     return { error: "Please enter the expected opening date." };
   }
 
-  // Attempt insert into opening_reminders table
   const { error: insertError } = await supabase.from("opening_reminders" as any).insert({
     user_id: user.id,
     title,
@@ -619,22 +631,7 @@ export async function createOpeningReminderAction(
   });
 
   if (insertError) {
-    // Graceful fallback if table not yet migrated on remote Supabase
-    const { error: fallbackError } = await supabase.from("applications").insert({
-      user_id: user.id,
-      title,
-      record_type: recordType,
-      institution_or_provider: institution,
-      status: "researching",
-      study_period: targetCycle,
-      official_url: officialUrl,
-      user_notes: `[OPENING_REMINDER:${expectedOpenDate}] ${notes || ""}`.trim(),
-      verification_state: "unreviewed",
-    });
-
-    if (fallbackError) {
-      return { error: fallbackError.message || "Failed to create reminder." };
-    }
+    return { error: insertError.message || "Failed to create reminder." };
   }
 
   revalidatePath("/app");
@@ -653,15 +650,14 @@ export async function deleteOpeningReminderAction(
     return { error: "Authentication required" };
   }
 
-  // Attempt delete from opening_reminders
   const { error } = await supabase
     .from("opening_reminders" as any)
     .delete()
-    .eq("id", reminderId);
+    .eq("id", reminderId)
+    .eq("user_id", user.id);
 
   if (error) {
-    // Also try delete from applications fallback if stored there
-    await supabase.from("applications").delete().eq("id", reminderId);
+    return { error: error.message || "Failed to delete reminder." };
   }
 
   revalidatePath("/app");
@@ -689,41 +685,12 @@ export async function convertReminderToApplicationAction(
 
   const reminder = reminderData as any;
 
-  let title = "Prospective Application";
-  let recordType: RecordType = "program";
-  let institution = null;
-  let officialUrl = null;
-  let targetCycle = null;
-  let notes = null;
+  if (!reminder || reminder.user_id !== user.id) {
+    return { error: "Reminder not found." };
+  }
 
-  if (reminder) {
-    title = reminder.title;
-    recordType = reminder.record_type;
-    institution = reminder.institution_or_provider;
-    officialUrl = reminder.official_url;
-    targetCycle = reminder.target_cycle;
-    notes = reminder.notes;
-  } else {
-    // Check fallback in applications
-    const { data: fallbackApp } = await supabase
-      .from("applications")
-      .select("*")
-      .eq("id", reminderId)
-      .single();
-
-    if (fallbackApp) {
-      // It's already in applications, just transition status to preparing!
-      await supabase
-        .from("applications")
-        .update({
-          status: "preparing",
-          user_notes: fallbackApp.user_notes?.replace(/\[OPENING_REMINDER:[^\]]+\]\s*/, ""),
-        })
-        .eq("id", reminderId);
-
-      revalidatePath("/app");
-      redirect(`/app/applications/${reminderId}`);
-    }
+  if (reminder.status === "converted" && reminder.converted_application_id) {
+    redirect(`/app/applications/${reminder.converted_application_id}`);
   }
 
   // Insert official application
@@ -731,13 +698,15 @@ export async function convertReminderToApplicationAction(
     .from("applications")
     .insert({
       user_id: user.id,
-      title,
-      record_type: recordType,
-      institution_or_provider: institution,
+      title: reminder.title,
+      record_type: reminder.record_type as RecordType,
+      institution_or_provider: reminder.institution_or_provider,
       status: "preparing",
-      study_period: targetCycle,
-      official_url: officialUrl,
-      user_notes: notes ? `Converted from opening watchlist: ${notes}` : "Converted from opening watchlist",
+      study_period: reminder.target_cycle,
+      official_url: reminder.official_url,
+      user_notes: reminder.notes
+        ? `Converted from opening watchlist: ${reminder.notes}`
+        : "Converted from opening watchlist",
       verification_state: "unreviewed",
     })
     .select("id")
@@ -748,16 +717,43 @@ export async function convertReminderToApplicationAction(
   }
 
   // Mark reminder as converted
-  if (reminder) {
-    await supabase
-      .from("opening_reminders" as any)
-      .update({
-        status: "converted",
-        converted_application_id: newApp.id,
-      })
-      .eq("id", reminderId);
-  }
+  await supabase
+    .from("opening_reminders" as any)
+    .update({
+      status: "converted",
+      converted_application_id: newApp.id,
+    })
+    .eq("id", reminderId);
 
   revalidatePath("/app");
   redirect(`/app/applications/${newApp.id}`);
 }
+
+// ── 15. Autofill & Metadata Extraction Action ──
+export async function fetchAdmissionsDetailsAction(targetUrl: string): Promise<{
+  success: boolean;
+  data?: import("@/lib/ingestion/metadataExtractor").AdmissionsMetadata;
+  error?: string;
+}> {
+  // Server actions are public endpoints; require a signed-in user before fetching remote URLs
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "Authentication required." };
+  }
+
+  try {
+    const { fetchAndExtractAdmissionsMetadata } = await import("@/lib/ingestion/metadataExtractor");
+    const data = await fetchAndExtractAdmissionsMetadata(targetUrl);
+    return { success: true, data };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err?.message || "Failed to fetch admissions details from this URL.",
+    };
+  }
+}
+
