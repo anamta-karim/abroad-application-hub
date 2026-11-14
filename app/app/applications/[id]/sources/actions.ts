@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { safeFetchHtml, validateUrlForSSRF } from "@/lib/ingestion/ssrf";
 import { extractCleanTextFromHtml } from "@/lib/ingestion/html";
-import { extractTextFromPdf } from "@/lib/ingestion/pdf";
+import { extractTextFromPdf, PdfExtractionError } from "@/lib/ingestion/pdf";
 import { chunkDocumentText, computeSha256 } from "@/lib/ingestion/chunker";
 import { extractCandidateFacts } from "@/lib/ingestion/extractor";
 import { parseFactDate } from "@/lib/ingestion/dates";
@@ -219,7 +219,19 @@ export async function ingestPdfAction(
   const contentHash = computeSha256(buffer.toString("binary"));
   const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
 
-  // 1. Insert pending source
+  // 1. Read the text first: scanned, protected or broken PDFs are rejected
+  // here with a clear message, before anything is stored.
+  let extracted: Awaited<ReturnType<typeof extractTextFromPdf>>;
+  try {
+    extracted = await extractTextFromPdf(buffer);
+  } catch (err) {
+    if (err instanceof PdfExtractionError) {
+      return { error: err.message };
+    }
+    return { error: "This PDF couldn't be read. Try re-downloading it from the official site." };
+  }
+
+  // 2. Insert pending source
   const { data: source, error: sourceInsertError } = await supabase
     .from("sources")
     .insert({
@@ -244,7 +256,7 @@ export async function ingestPdfAction(
   let uploaded = false;
 
   try {
-    // 2. Upload the original PDF to the private, user-scoped bucket
+    // 3. Upload the original PDF to the private, user-scoped bucket
     const { error: storageError } = await supabase.storage
       .from(SOURCES_BUCKET)
       .upload(storagePath, buffer, {
@@ -262,8 +274,7 @@ export async function ingestPdfAction(
       .update({ storage_path: storagePath })
       .eq("id", source.id);
 
-    // 3. Extract text and page metadata from PDF
-    const { title: extractedTitle, pages, fullText } = extractTextFromPdf(buffer);
+    const { title: extractedTitle, fullText } = extracted;
     const docTitle = extractedTitle || file.name.replace(/\.pdf$/i, "");
 
     // 4. Create versioned source snapshot

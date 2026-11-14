@@ -197,7 +197,7 @@ export function SourceManager({ applicationId, sources }: SourceManagerProps) {
 
                   <p className="text-[11px] text-ink-muted truncate">
                     {source.source_type === "pdf"
-                      ? `PDF File &bull; ${source.file_size_bytes ? `${Math.round(source.file_size_bytes / 1024)} KB` : ""}`
+                      ? `PDF File • ${source.file_size_bytes ? `${Math.round(source.file_size_bytes / 1024)} KB` : ""}`
                       : source.source_url || "Webpage source"}
                   </p>
 

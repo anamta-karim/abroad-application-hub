@@ -1,4 +1,14 @@
-import zlib from "zlib";
+import { getDocumentProxy, extractTextItems, getMeta } from "unpdf";
+
+/**
+ * PDF text extraction using pdf.js (via unpdf's serverless build).
+ *
+ * Handles the PDFs universities actually publish (embedded/subset fonts,
+ * compressed streams, Word/Chrome/InDesign exports). Rebuilds paragraphs and
+ * marks headings ("# Heading") from font sizes so the chunker can attach
+ * section titles to citations. Scanned (image-only) and password-protected
+ * PDFs are reported with a clear message instead of "succeeding" with no text.
+ */
 
 export interface ExtractedPage {
   pageNumber: number;
@@ -8,144 +18,197 @@ export interface ExtractedPage {
 export interface PdfExtractionResult {
   title: string;
   pages: ExtractedPage[];
+  /** Pages joined with "--- Page N ---" markers, each on its own paragraph. */
   fullText: string;
+  totalPages: number;
 }
 
-/**
- * Extracts plain text and page metadata from a PDF Buffer.
- * Uses native zlib stream decompression and text-operator extraction without external binaries.
- */
-export function extractTextFromPdf(pdfBuffer: Buffer): PdfExtractionResult {
-  const binaryString = pdfBuffer.toString("binary");
+export type PdfErrorCode = "not_pdf" | "encrypted" | "no_text" | "unreadable";
 
-  // Verify PDF header %PDF-1.x
-  if (!binaryString.startsWith("%PDF-")) {
-    throw new Error("Invalid file format: Not a valid PDF document.");
+export class PdfExtractionError extends Error {
+  constructor(public code: PdfErrorCode, message: string) {
+    super(message);
+    this.name = "PdfExtractionError";
   }
+}
 
-  // 1. Locate and decompress stream objects
-  const streamRegex = /stream[\r\n]+([\s\S]*?)[\r\n]+endstream/g;
-  let match: RegExpExecArray | null;
-  const decompressedStreams: string[] = [];
+export const PDF_ERROR_MESSAGES: Record<PdfErrorCode, string> = {
+  not_pdf: "This file isn't a valid PDF.",
+  encrypted: "This PDF is password-protected. Remove the password (or upload an unprotected copy) and try again.",
+  no_text:
+    "This PDF has no selectable text. It looks like a scanned document. Upload a text-based PDF, or add the official webpage link instead.",
+  unreadable: "This PDF couldn't be read. It may be damaged; try re-downloading it from the official site.",
+};
 
-  while ((match = streamRegex.exec(binaryString)) !== null) {
-    const rawStream = match[1];
-    const streamBuffer = Buffer.from(rawStream, "binary");
+/** Minimum characters of real text before we accept a document. */
+const MIN_TEXT_CHARS = 40;
 
-    try {
-      // Try inflate (FlateDecode)
-      const decompressed = zlib.inflateSync(streamBuffer);
-      decompressedStreams.push(decompressed.toString("utf-8"));
-    } catch {
-      try {
-        // Try raw inflate without zlib header
-        const decompressedRaw = zlib.inflateRawSync(streamBuffer);
-        decompressedStreams.push(decompressedRaw.toString("utf-8"));
-      } catch {
-        // If not compressed with flate, keep raw text
-        decompressedStreams.push(streamBuffer.toString("utf-8"));
-      }
-    }
-  }
+export interface TextItem {
+  str: string;
+  y: number;
+  fontSize: number;
+  hasEOL: boolean;
+}
 
-  // 2. Extract text operators (BT ... ET blocks, Tj, TJ)
-  const pages: ExtractedPage[] = [];
-  let currentPageNumber = 1;
+interface Line {
+  text: string;
+  y: number;
+  fontSize: number;
+}
 
-  for (const streamContent of decompressedStreams) {
-    const streamText = extractTextFromStream(streamContent);
-    if (streamText.trim().length > 0) {
-      pages.push({
-        pageNumber: currentPageNumber,
-        text: streamText.trim(),
-      });
-      currentPageNumber++;
-    }
-  }
+/** Groups pdf.js text items into visual lines (hasEOL marks line ends). */
+function toLines(items: TextItem[]): Line[] {
+  const lines: Line[] = [];
+  let parts: string[] = [];
+  let y = 0;
+  let fontSize = 0;
 
-  // If no streams contained text operators, fallback to direct text object regex
-  if (pages.length === 0) {
-    const fallbackText = extractTextFromStream(binaryString);
-    if (fallbackText.trim().length > 0) {
-      pages.push({
-        pageNumber: 1,
-        text: fallbackText.trim(),
-      });
-    }
-  }
-
-  const fullText = pages.map((p) => `--- Page ${p.pageNumber} ---\n${p.text}`).join("\n\n");
-
-  // Attempt to extract title from /Title (document metadata)
-  let title = "Official PDF Document";
-  const titleMetaMatch = binaryString.match(/\/Title\s*\(([^)]+)\)/i);
-  if (titleMetaMatch && titleMetaMatch[1]) {
-    title = cleanPdfString(titleMetaMatch[1]);
-  } else if (pages.length > 0) {
-    // First line of first page
-    const firstLine = pages[0].text.split("\n")[0]?.trim();
-    if (firstLine && firstLine.length > 3 && firstLine.length < 120) {
-      title = firstLine;
-    }
-  }
-
-  return {
-    title,
-    pages,
-    fullText,
+  const flush = () => {
+    const text = parts.join("").replace(/\s+/g, " ").trim();
+    if (text) lines.push({ text, y, fontSize });
+    parts = [];
+    fontSize = 0;
   };
+
+  for (const item of items) {
+    if (parts.length === 0 && item.str.trim()) y = item.y;
+    if (item.str) {
+      parts.push(item.str);
+      if (item.str.trim()) fontSize = Math.max(fontSize, item.fontSize || 0);
+    }
+    if (item.hasEOL) flush();
+  }
+  flush();
+  return lines;
+}
+
+/** Font size used by most of the text (weighted by characters). */
+function bodyFontSize(lines: Line[]): number {
+  const weights = new Map<number, number>();
+  for (const l of lines) {
+    const size = Math.round(l.fontSize * 2) / 2;
+    weights.set(size, (weights.get(size) || 0) + l.text.length);
+  }
+  let best = 0;
+  let bestWeight = -1;
+  for (const [size, w] of weights) {
+    if (w > bestWeight) {
+      best = size;
+      bestWeight = w;
+    }
+  }
+  return best || 10;
 }
 
 /**
- * Extracts text characters from PDF content stream drawing operators.
+ * Rebuilds readable text for one page: wrapped lines joined into paragraphs,
+ * blank lines between paragraphs, and larger short lines marked as "# headings".
  */
-function extractTextFromStream(stream: string): string {
-  const lines: string[] = [];
+export function layoutPageText(items: TextItem[]): string {
+  const lines = toLines(items);
+  if (lines.length === 0) return "";
+  const body = bodyFontSize(lines);
 
-  // Match text objects between BT and ET
-  const btEtRegex = /BT[\s\S]*?ET/g;
-  let btMatch: RegExpExecArray | null;
+  const blocks: string[] = [];
+  let paragraph = "";
+  let prev: Line | null = null;
 
-  while ((btMatch = btEtRegex.exec(stream)) !== null) {
-    const block = btMatch[0];
+  const endParagraph = () => {
+    if (paragraph.trim()) blocks.push(paragraph.trim());
+    paragraph = "";
+  };
 
-    // Extract individual strings inside (string) Tj
-    const tjRegex = /\(([\s\S]*?)\)\s*Tj/g;
-    let tjMatch: RegExpExecArray | null;
-    let blockText = "";
+  for (const line of lines) {
+    const isHeading = line.fontSize >= body * 1.2 && line.text.length <= 120 && /[A-Za-zÀ-ɏ]/.test(line.text);
 
-    while ((tjMatch = tjRegex.exec(block)) !== null) {
-      blockText += cleanPdfString(tjMatch[1]) + " ";
+    if (isHeading) {
+      endParagraph();
+      blocks.push(`# ${line.text}`);
+      prev = null;
+      continue;
     }
 
-    // Extract array strings inside [(string1) 20 (string2)] TJ
-    const tjArrayRegex = /\[([\s\S]*?)\]\s*TJ/g;
-    let arrayMatch: RegExpExecArray | null;
+    // A vertical gap noticeably bigger than a normal line step starts a new paragraph
+    const gap = prev ? Math.abs(prev.y - line.y) : 0;
+    const lineStep = (prev?.fontSize || body) * 1.6;
+    if (prev && gap > lineStep) endParagraph();
 
-    while ((arrayMatch = tjArrayRegex.exec(block)) !== null) {
-      const arrayContent = arrayMatch[1];
-      const stringMatches = arrayContent.match(/\(([\s\S]*?)\)/g);
-      if (stringMatches) {
-        for (const s of stringMatches) {
-          const inner = s.slice(1, -1);
-          blockText += cleanPdfString(inner) + " ";
-        }
-      }
+    if (!paragraph) {
+      paragraph = line.text;
+    } else if (/[A-Za-z]-$/.test(paragraph) && /^[a-z]/.test(line.text)) {
+      paragraph = paragraph.slice(0, -1) + line.text; // re-join a hyphenated word
+    } else {
+      paragraph += " " + line.text;
     }
-
-    if (blockText.trim()) {
-      lines.push(blockText.trim());
-    }
+    prev = line;
   }
+  endParagraph();
 
-  return lines.join("\n");
+  return blocks.join("\n\n");
 }
 
-function cleanPdfString(raw: string): string {
-  return raw
-    .replace(/\\([()\\])/g, "$1") // unescape \( \) \\
-    .replace(/\\n/g, "\n")
-    .replace(/\\r/g, "\r")
-    .replace(/\\t/g, "\t")
-    .replace(/\\(\d{1,3})/g, (_, oct) => String.fromCharCode(parseInt(oct, 8)));
+function cleanTitle(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const title = raw
+    .replace(/^Microsoft (Word|PowerPoint) - /i, "")
+    .replace(/\.(docx?|pptx?|indd|pdf)$/i, "")
+    .trim();
+  if (title.length < 3 || /^untitled/i.test(title)) return null;
+  return title.slice(0, 200);
+}
+
+export async function extractTextFromPdf(pdfBuffer: Buffer | Uint8Array): Promise<PdfExtractionResult> {
+  const bytes = pdfBuffer instanceof Uint8Array ? new Uint8Array(pdfBuffer) : new Uint8Array(pdfBuffer);
+  const header = new TextDecoder("latin1").decode(bytes.subarray(0, 1024));
+  if (!header.includes("%PDF-")) {
+    throw new PdfExtractionError("not_pdf", PDF_ERROR_MESSAGES.not_pdf);
+  }
+
+  let pdf;
+  try {
+    pdf = await getDocumentProxy(bytes);
+  } catch (err: any) {
+    if (err?.name === "PasswordException") {
+      throw new PdfExtractionError("encrypted", PDF_ERROR_MESSAGES.encrypted);
+    }
+    throw new PdfExtractionError("unreadable", PDF_ERROR_MESSAGES.unreadable);
+  }
+
+  let pageItems: TextItem[][];
+  let totalPages: number;
+  try {
+    const result = await extractTextItems(pdf);
+    pageItems = result.items as TextItem[][];
+    totalPages = result.totalPages;
+  } catch {
+    throw new PdfExtractionError("unreadable", PDF_ERROR_MESSAGES.unreadable);
+  }
+
+  const pages: ExtractedPage[] = pageItems
+    .map((items, i) => ({ pageNumber: i + 1, text: layoutPageText(items) }))
+    .filter((p) => p.text.trim().length > 0);
+
+  const textChars = pages.reduce((n, p) => n + p.text.replace(/\s/g, "").length, 0);
+  if (textChars < MIN_TEXT_CHARS) {
+    throw new PdfExtractionError("no_text", PDF_ERROR_MESSAGES.no_text);
+  }
+
+  let title: string | null = null;
+  try {
+    const meta = await getMeta(pdf);
+    title = cleanTitle(meta.info?.Title);
+  } catch {
+    // Metadata is optional
+  }
+  if (!title) {
+    const firstHeading = pages[0].text.match(/^# (.+)$/m)?.[1];
+    const firstLine = pages[0].text.split("\n")[0]?.replace(/^# /, "");
+    title = cleanTitle(firstHeading) || cleanTitle(firstLine) || "Official PDF Document";
+  }
+
+  // Each marker is its own paragraph so the chunker records the page without
+  // swallowing that page's first paragraph.
+  const fullText = pages.map((p) => `--- Page ${p.pageNumber} ---\n\n${p.text}`).join("\n\n");
+
+  return { title, pages, fullText, totalPages };
 }

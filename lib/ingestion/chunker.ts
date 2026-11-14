@@ -33,19 +33,37 @@ export function chunkDocumentText(
   let currentPageNumber: number | null = 1;
   let chunkIndex = 0;
 
+  // Ends the current chunk at a page or section boundary, without carrying
+  // overlap across it, so every chunk's page number and heading are accurate.
+  const closeChunkAtBoundary = () => {
+    if (currentChunkText.trim()) {
+      chunks.push({
+        chunkIndex,
+        pageNumber: currentPageNumber,
+        sectionHeading: currentHeading,
+        content: currentChunkText.trim(),
+        charCount: currentChunkText.trim().length,
+      });
+      chunkIndex++;
+    }
+    currentChunkText = "";
+  };
+
   for (const para of paragraphs) {
     const trimmed = para.trim();
     if (!trimmed) continue;
 
-    // Check for page markers: --- Page X ---
-    const pageMatch = trimmed.match(/^---\s*Page\s*(\d+)\s*---/i);
+    // Page markers: --- Page X ---
+    const pageMatch = trimmed.match(/^---\s*Page\s*(\d+)\s*---\s*$/i);
     if (pageMatch) {
+      closeChunkAtBoundary();
       currentPageNumber = parseInt(pageMatch[1], 10);
       continue;
     }
 
-    // Check for heading markers: # Heading or ALL CAPS lines
+    // Heading markers: # Heading (from HTML h1-h4 or larger PDF text)
     if (trimmed.startsWith("#")) {
+      closeChunkAtBoundary();
       currentHeading = trimmed.replace(/^#+\s*/, "").slice(0, 100);
     }
 
