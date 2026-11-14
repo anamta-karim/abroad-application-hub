@@ -196,7 +196,7 @@ export async function updateApplicationAction(
 // ── 3. Delete Application ──
 export async function deleteApplicationAction(
   applicationId: string
-): Promise<void> {
+): Promise<ActionResponse> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -206,10 +206,32 @@ export async function deleteApplicationAction(
     redirect("/login");
   }
 
-  await supabase
+  // Remember stored PDFs: the database cascade removes source rows but not Storage files
+  const { data: storedSources } = await supabase
+    .from("sources")
+    .select("storage_path")
+    .eq("application_id", applicationId)
+    .not("storage_path", "is", null);
+
+  // .select() returns the deleted rows, so an id that doesn't exist (or isn't
+  // this user's, which RLS hides) is reported instead of silently "succeeding"
+  const { data: deleted, error } = await supabase
     .from("applications")
     .delete()
-    .eq("id", applicationId);
+    .eq("id", applicationId)
+    .select("id");
+
+  if (error) {
+    return { error: error.message };
+  }
+  if (!deleted || deleted.length === 0) {
+    return { error: APPLICATION_NOT_FOUND };
+  }
+
+  const paths = (storedSources || []).map((s) => s.storage_path).filter((p): p is string => Boolean(p));
+  if (paths.length > 0) {
+    await supabase.storage.from("application-sources").remove(paths);
+  }
 
   revalidatePath("/app");
   redirect("/app");

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useActionState } from "react";
+import { runAction } from "@/lib/client/runAction";
+import { InlineError } from "@/components/InlineError";
 import {
   ingestWebpageAction,
   ingestPdfAction,
@@ -38,15 +40,20 @@ export function SourceManager({ applicationId, sources }: SourceManagerProps) {
   const [urlState, urlFormAction, isUrlPending] = useActionState(ingestWebpageWithId, initialActionState);
   const [pdfState, pdfFormAction, isPdfPending] = useActionState(ingestPdfWithId, initialActionState);
 
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   async function handleDeleteSource(sourceId: string) {
     if (!confirm("Are you sure you want to remove this source and its extracted facts?")) return;
     setDeletingId(sourceId);
-    await deleteSourceAction(sourceId, applicationId);
+    setDeleteError(null);
+    const err = await runAction(() => deleteSourceAction(sourceId, applicationId));
+    if (err) setDeleteError(`Couldn't remove the source: ${err}`);
     setDeletingId(null);
   }
 
   return (
     <div className="space-y-4">
+      <InlineError message={deleteError} onDismiss={() => setDeleteError(null)} />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-glass-borderSubtle">
         <div>
           <h2 className="font-heading font-extrabold text-base text-ink-deep">

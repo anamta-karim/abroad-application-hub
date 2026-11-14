@@ -7,6 +7,8 @@ import {
   unlinkApplicationsAction,
 } from "@/app/app/applications/actions";
 import type { RecordType } from "@/types/database";
+import { runAction } from "@/lib/client/runAction";
+import { InlineError } from "@/components/InlineError";
 
 interface LinkedAppItem {
   linkId: string;
@@ -41,6 +43,7 @@ export function LinkedApplications({
   const [selectedAppId, setSelectedAppId] = useState("");
   const [note, setNote] = useState("");
   const [isLinking, setIsLinking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const targetTypeLabel = currentRecordType === "program" ? "Scholarship" : "Program";
 
@@ -52,15 +55,22 @@ export function LinkedApplications({
     const programId = currentRecordType === "program" ? currentAppId : selectedAppId;
     const scholarshipId = currentRecordType === "program" ? selectedAppId : currentAppId;
 
-    await linkApplicationsAction(programId, scholarshipId, note);
+    setError(null);
+    const err = await runAction(() => linkApplicationsAction(programId, scholarshipId, note));
     setIsLinking(false);
+    if (err) {
+      setError(`Couldn't link: ${err}`); // keep the selection so the user can retry
+      return;
+    }
     setSelectedAppId("");
     setNote("");
   };
 
   const handleUnlink = async (linkId: string) => {
     if (confirm("Disconnect this linked record?")) {
-      await unlinkApplicationsAction(linkId, currentAppId);
+      setError(null);
+      const err = await runAction(() => unlinkApplicationsAction(linkId, currentAppId));
+      if (err) setError(`Couldn't disconnect: ${err}`);
     }
   };
 
@@ -130,6 +140,8 @@ export function LinkedApplications({
           ))}
         </div>
       )}
+
+      <InlineError message={error} onDismiss={() => setError(null)} />
 
       {/* Link new app selector */}
       {availableAppsToLink.length > 0 && (

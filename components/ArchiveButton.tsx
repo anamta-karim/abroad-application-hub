@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { archiveApplicationAction, unarchiveApplicationAction } from "@/app/app/applications/actions";
+import { runAction } from "@/lib/client/runAction";
 
 interface ArchiveButtonProps {
   applicationId: string;
@@ -13,12 +14,13 @@ export function ArchiveButton({ applicationId, isArchived }: ArchiveButtonProps)
 
   async function handleToggleArchive() {
     setIsPending(true);
-    if (isArchived) {
-      await unarchiveApplicationAction(applicationId);
-    } else {
-      await archiveApplicationAction(applicationId);
-    }
+    const err = await runAction(() =>
+      isArchived ? unarchiveApplicationAction(applicationId) : archiveApplicationAction(applicationId)
+    );
     setIsPending(false);
+    if (err) {
+      alert(`Couldn't ${isArchived ? "restore" : "archive"} this application: ${err}`);
+    }
   }
 
   return (

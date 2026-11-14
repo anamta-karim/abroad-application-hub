@@ -6,6 +6,8 @@ import {
   deleteOpeningReminderAction,
 } from "@/app/app/applications/actions";
 import type { OpeningReminder } from "@/types/database";
+import { runAction } from "@/lib/client/runAction";
+import { InlineError } from "@/components/InlineError";
 
 interface OpeningNudgeBannerProps {
   reminders: OpeningReminder[];
@@ -13,6 +15,7 @@ interface OpeningNudgeBannerProps {
 
 export function OpeningNudgeBanner({ reminders }: OpeningNudgeBannerProps) {
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   if (!reminders || reminders.length === 0) return null;
 
@@ -32,18 +35,23 @@ export function OpeningNudgeBanner({ reminders }: OpeningNudgeBannerProps) {
 
   async function handleConvert(id: string) {
     setPendingId(id);
-    await convertReminderToApplicationAction(id);
+    setError(null);
+    const err = await runAction(() => convertReminderToApplicationAction(id));
+    if (err) setError(`Couldn't start the application: ${err}`);
     setPendingId(null);
   }
 
   async function handleDismiss(id: string) {
     setPendingId(id);
-    await deleteOpeningReminderAction(id);
+    setError(null);
+    const err = await runAction(() => deleteOpeningReminderAction(id));
+    if (err) setError(`Couldn't dismiss the reminder: ${err}`);
     setPendingId(null);
   }
 
   return (
     <div className="space-y-3">
+      <InlineError message={error} onDismiss={() => setError(null)} />
       {dueReminders.map((reminder) => {
         const openDate = new Date(reminder.expected_open_date);
         const diffDays = Math.ceil((openDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));

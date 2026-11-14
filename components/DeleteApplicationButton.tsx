@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { deleteApplicationAction } from "@/app/app/applications/actions";
+import { runAction } from "@/lib/client/runAction";
 
 interface DeleteApplicationButtonProps {
   applicationId: string;
@@ -21,7 +22,12 @@ export function DeleteApplicationButton({
       )
     ) {
       setIsDeleting(true);
-      await deleteApplicationAction(applicationId);
+      // On success the action redirects to the dashboard; we only get here on failure
+      const err = await runAction(() => deleteApplicationAction(applicationId));
+      if (err) {
+        setIsDeleting(false);
+        alert(`Couldn't delete "${applicationTitle}": ${err}`);
+      }
     }
   };
 

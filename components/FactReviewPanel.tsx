@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { reviewFactAction } from "@/app/app/applications/[id]/sources/actions";
 import type { ReviewState, FactType, Confidence } from "@/types/database";
+import { runAction } from "@/lib/client/runAction";
+import { InlineError } from "@/components/InlineError";
 
 interface ExtractedFactItem {
   id: string;
@@ -24,28 +26,38 @@ export function FactReviewPanel({ applicationId, facts }: FactReviewPanelProps) 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editedValueInput, setEditedValueInput] = useState("");
   const [isSubmittingId, setIsSubmittingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const pendingFacts = facts.filter((f) => f.review_state === "suggested");
   const confirmedFacts = facts.filter((f) => f.review_state === "confirmed" || f.review_state === "edited");
 
   async function handleConfirm(factId: string) {
     setIsSubmittingId(factId);
-    await reviewFactAction(factId, applicationId, "confirm");
+    setError(null);
+    const err = await runAction(() => reviewFactAction(factId, applicationId, "confirm"));
+    if (err) setError(`Couldn't confirm this fact: ${err}`);
     setIsSubmittingId(null);
   }
 
   async function handleEditConfirm(factId: string) {
     if (!editedValueInput.trim()) return;
     setIsSubmittingId(factId);
-    await reviewFactAction(factId, applicationId, "edit", editedValueInput.trim());
+    setError(null);
+    const err = await runAction(() => reviewFactAction(factId, applicationId, "edit", editedValueInput.trim()));
+    setIsSubmittingId(null);
+    if (err) {
+      setError(`Couldn't save your edit: ${err}`); // keep the editor open with the text
+      return;
+    }
     setEditingId(null);
     setEditedValueInput("");
-    setIsSubmittingId(null);
   }
 
   async function handleReject(factId: string) {
     setIsSubmittingId(factId);
-    await reviewFactAction(factId, applicationId, "reject");
+    setError(null);
+    const err = await runAction(() => reviewFactAction(factId, applicationId, "reject"));
+    if (err) setError(`Couldn't reject this fact: ${err}`);
     setIsSubmittingId(null);
   }
 
@@ -60,6 +72,7 @@ export function FactReviewPanel({ applicationId, facts }: FactReviewPanelProps) 
 
   return (
     <div className="space-y-4">
+      <InlineError message={error} onDismiss={() => setError(null)} />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-glass-borderSubtle">
         <div>
           <h2 className="font-heading font-extrabold text-base text-ink-deep">

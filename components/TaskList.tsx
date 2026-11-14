@@ -7,6 +7,8 @@ import {
   deleteTaskAction,
 } from "@/app/app/applications/actions";
 import type { TaskStatus } from "@/types/database";
+import { runAction } from "@/lib/client/runAction";
+import { InlineError } from "@/components/InlineError";
 
 interface TaskItem {
   id: string;
@@ -24,21 +26,31 @@ interface TaskListProps {
 export function TaskList({ applicationId, initialTasks }: TaskListProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleToggle = async (taskId: string, currentStatus: TaskStatus) => {
-    await toggleTaskAction(taskId, applicationId, currentStatus);
+    setError(null);
+    const err = await runAction(() => toggleTaskAction(taskId, applicationId, currentStatus));
+    if (err) setError(`Couldn't update the task: ${err}`);
   };
 
   const handleDelete = async (taskId: string) => {
-    await deleteTaskAction(taskId, applicationId);
+    setError(null);
+    const err = await runAction(() => deleteTaskAction(taskId, applicationId));
+    if (err) setError(`Couldn't delete the task: ${err}`);
   };
 
   const handleAddSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError(null);
     setIsSubmitting(true);
     const formData = new FormData(e.currentTarget);
-    await addTaskAction(applicationId, formData);
+    const err = await runAction(() => addTaskAction(applicationId, formData));
     setIsSubmitting(false);
+    if (err) {
+      setError(`Task not added: ${err}`); // keep the form open with what was typed
+      return;
+    }
     setShowAddForm(false);
   };
 
@@ -65,6 +77,8 @@ export function TaskList({ applicationId, initialTasks }: TaskListProps) {
           {showAddForm ? "Cancel" : "+ Add Task"}
         </button>
       </div>
+
+      <InlineError message={error} onDismiss={() => setError(null)} />
 
       {showAddForm && (
         <form onSubmit={handleAddSubmit} className="glass-card rounded-2xl p-4 sm:p-5 space-y-3">

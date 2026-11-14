@@ -11,6 +11,8 @@ import {
 } from "@/app/app/applications/actions";
 import { OpeningReminderModal } from "@/components/OpeningReminderModal";
 import type { ApplicationStatus, RecordType, OpeningReminder } from "@/types/database";
+import { runAction } from "@/lib/client/runAction";
+import { InlineError } from "@/components/InlineError";
 
 interface ApplicationItem {
   id: string;
@@ -66,42 +68,48 @@ export function ApplicationDeck({
   const archivedApps = applications.filter((app) => isPastDueUncompleted(app));
   const activeReminders = reminders.filter((r) => r.status !== "converted" && r.status !== "dismissed");
 
+  const [error, setError] = useState<string | null>(null);
+
+  /** Runs one deck action with a shared busy flag and error message. */
+  async function perform(action: () => Promise<unknown>, failure: string): Promise<boolean> {
+    setIsSubmitting(true);
+    setError(null);
+    const err = await runAction(action);
+    setIsSubmitting(false);
+    if (err) setError(`${failure}: ${err}`);
+    return !err;
+  }
+
   async function handleRollover(appId: string) {
     if (!newDeadlineInput) return;
-    setIsSubmitting(true);
-    await rolloverDeadlineAction(appId, newDeadlineInput);
-    setRolloverAppId(null);
-    setNewDeadlineInput("");
-    setIsSubmitting(false);
+    const ok = await perform(() => rolloverDeadlineAction(appId, newDeadlineInput), "Couldn't set the new deadline");
+    if (ok) {
+      setRolloverAppId(null);
+      setNewDeadlineInput("");
+    }
   }
 
   async function handleMarkSubmitted(appId: string) {
-    setIsSubmitting(true);
-    await updateStatusQuickAction(appId, "submitted");
-    await unarchiveApplicationAction(appId);
-    setIsSubmitting(false);
+    const ok = await perform(() => updateStatusQuickAction(appId, "submitted"), "Couldn't mark it as submitted");
+    if (ok) await perform(() => unarchiveApplicationAction(appId), "Marked as submitted, but couldn't restore it");
   }
 
   async function handleRestore(appId: string) {
-    setIsSubmitting(true);
-    await unarchiveApplicationAction(appId);
-    setIsSubmitting(false);
+    await perform(() => unarchiveApplicationAction(appId), "Couldn't restore the application");
   }
 
   async function handleConvertReminder(reminderId: string) {
-    setIsSubmitting(true);
-    await convertReminderToApplicationAction(reminderId);
-    setIsSubmitting(false);
+    // Redirects to the new application on success
+    await perform(() => convertReminderToApplicationAction(reminderId), "Couldn't start the application");
   }
 
   async function handleDeleteReminder(reminderId: string) {
-    setIsSubmitting(true);
-    await deleteOpeningReminderAction(reminderId);
-    setIsSubmitting(false);
+    await perform(() => deleteOpeningReminderAction(reminderId), "Couldn't remove the reminder");
   }
 
   return (
     <div className="space-y-5">
+      <InlineError message={error} onDismiss={() => setError(null)} />
       {/* ── Deck Navigation Tabs ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-glass-borderSubtle pb-2">
         <div className="flex items-center space-x-1 sm:space-x-2 text-xs font-bold">

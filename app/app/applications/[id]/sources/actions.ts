@@ -7,6 +7,7 @@ import { extractCleanTextFromHtml } from "@/lib/ingestion/html";
 import { extractTextFromPdf } from "@/lib/ingestion/pdf";
 import { chunkDocumentText, computeSha256 } from "@/lib/ingestion/chunker";
 import { extractCandidateFacts } from "@/lib/ingestion/extractor";
+import { parseFactDate } from "@/lib/ingestion/dates";
 import { userOwnsApplications, APPLICATION_NOT_FOUND } from "@/lib/supabase/ownership";
 import type { ActionResponse } from "@/app/app/applications/actions";
 import type { ReviewState } from "@/types/database";
@@ -140,7 +141,10 @@ export async function ingestWebpageAction(
         citation_chunk_id: chunkIdMap.get(fact.chunkIndex) || null,
       }));
 
-      await supabase.from("extracted_facts").insert(factInserts);
+      const { error: factsError } = await supabase.from("extracted_facts").insert(factInserts);
+      if (factsError) {
+        throw new Error(`Text was read, but the suggested facts couldn't be saved: ${factsError.message}`);
+      }
     }
 
     // 8. Update source to ready status
@@ -294,10 +298,14 @@ export async function ingestPdfAction(
       content: c.content,
     }));
 
-    const { data: insertedChunks } = await supabase
+    const { data: insertedChunks, error: chunkError } = await supabase
       .from("source_chunks")
       .insert(chunkInserts)
       .select("id, chunk_index");
+
+    if (chunkError) {
+      throw new Error(chunkError.message || "Failed to store text chunks.");
+    }
 
     const chunkIdMap = new Map<number, string>();
     if (insertedChunks) {
@@ -321,7 +329,10 @@ export async function ingestPdfAction(
         citation_chunk_id: chunkIdMap.get(fact.chunkIndex) || null,
       }));
 
-      await supabase.from("extracted_facts").insert(factInserts);
+      const { error: factsError } = await supabase.from("extracted_facts").insert(factInserts);
+      if (factsError) {
+        throw new Error(`Text was read, but the suggested facts couldn't be saved: ${factsError.message}`);
+      }
     }
 
     // 7. Update source to ready status
@@ -430,7 +441,7 @@ export async function reviewFactAction(
         .maybeSingle();
 
       if (!existingReq) {
-        await supabase.from("document_requirements").insert({
+        const { error: reqError } = await supabase.from("document_requirements").insert({
           user_id: user.id,
           application_id: factApplicationId,
           requirement_fact_id: fact.id,
@@ -438,22 +449,32 @@ export async function reviewFactAction(
           status: "not_started",
           notes: `Verified from source: "${valObj?.context || fact.label}"`,
         });
+        if (reqError) {
+          revalidatePath(`/app/applications/${factApplicationId}`);
+          return { error: `Fact confirmed, but it couldn't be added to your document checklist: ${reqError.message}` };
+        }
       }
     }
 
     // 2. If deadline, update application deadline if not already set or confirmed
     if (fact.fact_type === "deadline") {
-      // Try to parse YYYY-MM-DD
-      const dateParsed = new Date(finalVal);
-      if (!isNaN(dateParsed.getTime())) {
-        const isoDate = dateParsed.toISOString().split("T")[0];
-        await supabase
-          .from("applications")
-          .update({
-            deadline: isoDate,
-            verification_state: "confirmed",
-          })
-          .eq("id", factApplicationId);
+      const isoDate = parseFactDate(String(finalVal));
+      if (!isoDate) {
+        revalidatePath(`/app/applications/${factApplicationId}`);
+        return {
+          error: `Fact confirmed, but "${finalVal}" isn't a date the app can read, so the deadline wasn't changed. Set it on the Edit page.`,
+        };
+      }
+      const { error: deadlineError } = await supabase
+        .from("applications")
+        .update({
+          deadline: isoDate,
+          verification_state: "confirmed",
+        })
+        .eq("id", factApplicationId);
+      if (deadlineError) {
+        revalidatePath(`/app/applications/${factApplicationId}`);
+        return { error: `Fact confirmed, but the deadline couldn't be updated: ${deadlineError.message}` };
       }
     }
   }

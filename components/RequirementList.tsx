@@ -7,6 +7,8 @@ import {
   deleteRequirementAction,
 } from "@/app/app/applications/actions";
 import type { RequirementStatus } from "@/types/database";
+import { runAction } from "@/lib/client/runAction";
+import { InlineError } from "@/components/InlineError";
 
 interface RequirementItem {
   id: string;
@@ -34,23 +36,33 @@ const statusLabels: Record<RequirementStatus, { label: string; badgeClass: strin
 export function RequirementList({ applicationId, initialRequirements }: RequirementListProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleStatusChange = async (reqId: string, newStatus: RequirementStatus) => {
-    await updateRequirementStatusAction(reqId, applicationId, newStatus);
+    setError(null);
+    const err = await runAction(() => updateRequirementStatusAction(reqId, applicationId, newStatus));
+    if (err) setError(`Status not changed: ${err}`);
   };
 
   const handleDelete = async (reqId: string) => {
     if (confirm("Remove this document requirement?")) {
-      await deleteRequirementAction(reqId, applicationId);
+      setError(null);
+      const err = await runAction(() => deleteRequirementAction(reqId, applicationId));
+      if (err) setError(`Couldn't remove the requirement: ${err}`);
     }
   };
 
   const handleAddSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError(null);
     setIsSubmitting(true);
     const formData = new FormData(e.currentTarget);
-    await addRequirementAction(applicationId, formData);
+    const err = await runAction(() => addRequirementAction(applicationId, formData));
     setIsSubmitting(false);
+    if (err) {
+      setError(`Requirement not added: ${err}`); // keep the form open with what was typed
+      return;
+    }
     setShowAddForm(false);
   };
 
@@ -81,6 +93,8 @@ export function RequirementList({ applicationId, initialRequirements }: Requirem
       </div>
 
       {/* Add Requirement Form */}
+      <InlineError message={error} onDismiss={() => setError(null)} />
+
       {showAddForm && (
         <form onSubmit={handleAddSubmit} className="glass-card rounded-2xl p-4 sm:p-5 space-y-4">
           <div className="space-y-1">
