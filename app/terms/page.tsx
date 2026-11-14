@@ -10,7 +10,7 @@ export default function TermsPage() {
         >
           &larr; Back to Home
         </Link>
-        <span className="text-xs font-bold text-ink-subtle">Abroad Application Hub</span>
+        <span className="text-xs font-bold text-ink-subtle">AbroadAtlas</span>
       </header>
 
       <main className="glass-stage rounded-3xl p-6 sm:p-12 space-y-6">
@@ -30,7 +30,7 @@ export default function TermsPage() {
           <section className="space-y-2">
             <h2 className="font-heading font-bold text-base text-ink-deep">1. Independent Study Workspace</h2>
             <p className="text-ink-muted">
-              Abroad Application Hub is an independent personal organization tool. It is not affiliated with, endorsed by, or an official agent of any university, scholarship commission, embassy, or immigration authority.
+              AbroadAtlas is an independent personal organization tool. It is not affiliated with, endorsed by, or an official agent of any university, scholarship commission, embassy, or immigration authority.
             </p>
           </section>
 
@@ -63,7 +63,7 @@ export default function TermsPage() {
       </main>
 
       <footer className="text-center text-xs text-ink-muted py-4">
-        Abroad Application Hub &bull; Free-tier study abroad personal workspace
+        AbroadAtlas &bull; Free-tier study abroad personal workspace
       </footer>
     </div>
   );

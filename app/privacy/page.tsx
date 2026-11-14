@@ -11,7 +11,7 @@ export default function PrivacyPage() {
         >
           &larr; Back to Home
         </Link>
-        <span className="text-xs font-bold text-ink-subtle">Abroad Application Hub</span>
+        <span className="text-xs font-bold text-ink-subtle">AbroadAtlas</span>
       </header>
 
       {/* Main Glass Stage */}
@@ -32,7 +32,7 @@ export default function PrivacyPage() {
           <section className="space-y-2">
             <h2 className="font-heading font-bold text-base text-ink-deep">1. Strict User Isolation</h2>
             <p className="text-ink-muted">
-              Abroad Application Hub enforces PostgreSQL Row Level Security (RLS) across every database table. Every application, task, deadline, note, and uploaded prospectus chunk is owner-scoped. No other user or third-party advertiser can query, view, or modify your application portfolio.
+              AbroadAtlas enforces PostgreSQL Row Level Security (RLS) across every database table. Every application, task, deadline, note, and uploaded prospectus chunk is owner-scoped. No other user or third-party advertiser can query, view, or modify your application portfolio.
             </p>
           </section>
 
@@ -67,7 +67,7 @@ export default function PrivacyPage() {
       </main>
 
       <footer className="text-center text-xs text-ink-muted py-4">
-        Abroad Application Hub &bull; Free-tier study abroad personal workspace
+        AbroadAtlas &bull; Free-tier study abroad personal workspace
       </footer>
     </div>
   );

@@ -350,7 +350,7 @@ async function callGeminiFreeTier(
     )
     .join("\n\n---\n\n");
 
-  const systemInstruction = `You are the Abroad Application Hub Grounded Admissions Assistant.
+  const systemInstruction = `You are the AbroadAtlas Grounded Admissions Assistant.
 NON-NEGOTIABLE SECURITY & FACTUAL RULES:
 1. You must answer the user's inquiry STRICTLY using the provided official citations.
 2. If the citations do not explicitly contain the answer, you MUST state: "I could not find information regarding this in your uploaded official sources." Never fabricate deadlines, fees, or requirements.

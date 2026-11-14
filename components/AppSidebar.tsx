@@ -96,7 +96,7 @@ export function AppSidebar({ displayName, signOutAction }: AppSidebarProps) {
             <Link
               href="/app"
               className="w-11 h-11 rounded-2xl bg-gradient-to-br from-brand to-brand-dark text-white flex items-center justify-center font-heading font-extrabold text-base shadow-md shadow-brand/20 active:scale-95 transition-transform flex-shrink-0"
-              aria-label="Abroad Application Hub Home"
+              aria-label="AbroadAtlas Home"
             >
               A
             </Link>
@@ -105,10 +105,10 @@ export function AppSidebar({ displayName, signOutAction }: AppSidebarProps) {
                 href="/app"
                 className="font-heading font-extrabold text-ink-deep text-base tracking-tight leading-tight hover:text-brand transition-colors"
               >
-                Abroad Hub
+                AbroadAtlas
               </Link>
               <span className="text-[11px] font-medium text-ink-muted">
-                Study Abroad Studio
+                Study abroad, mapped
               </span>
             </div>
           </div>
@@ -181,7 +181,7 @@ export function AppSidebar({ displayName, signOutAction }: AppSidebarProps) {
               A
             </Link>
             <span className="font-heading font-extrabold text-ink-deep text-sm">
-              Abroad Hub
+              AbroadAtlas
             </span>
           </div>
           <div className="flex items-center space-x-2">

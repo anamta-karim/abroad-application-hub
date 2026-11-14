@@ -12,10 +12,10 @@ export default function HomePage() {
             </div>
             <div className="flex flex-col">
               <span className="font-heading font-bold text-ink-deep text-base tracking-tight leading-tight">
-                Abroad Application Hub
+                AbroadAtlas
               </span>
               <span className="text-[10px] font-semibold text-ink-muted hidden sm:inline-block">
-                Study Abroad &amp; Scholarship Workspace
+                Your map to studying abroad
               </span>
             </div>
           </div>
@@ -42,7 +42,7 @@ export default function HomePage() {
         <div className="glass-stage rounded-[32px] p-8 sm:p-14 lg:p-16 space-y-8 text-center sm:text-left">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass-badge-teal text-xs font-bold">
             <span className="w-2 h-2 rounded-full bg-teal animate-pulse" aria-hidden="true" />
-            Study Abroad &amp; Scholarship Workspace
+            Programs &middot; Scholarships &middot; Deadlines &middot; Costs
           </div>
 
           <div className="space-y-4 max-w-4xl">
@@ -107,7 +107,7 @@ export default function HomePage() {
       {/* ═══ Footer ═══ */}
       <footer className="max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center text-xs text-ink-muted">
         <div className="glass-card rounded-2xl px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <span>Abroad Application Hub &bull; Personal study-abroad and scholarship workspace</span>
+          <span>AbroadAtlas &bull; Personal study-abroad and scholarship workspace</span>
           <div className="flex items-center space-x-4">
             <Link href="/privacy" className="hover:text-brand transition-colors font-medium">
               Privacy Policy

@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Abroad Application Hub",
+  title: "AbroadAtlas · Your map to studying abroad",
   description: "Organize international program and scholarship applications with your own official sources.",
 };
 

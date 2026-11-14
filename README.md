@@ -1,6 +1,6 @@
 <div align="center">
 
-# Abroad Application Hub 🌍
+# AbroadAtlas 🌍
 
 ### Track study-abroad deadlines, ingest official university guidelines, and generate tailored prep blueprints — strictly backed by verified evidence.
 
@@ -8,7 +8,7 @@
 ![React](https://img.shields.io/badge/React-19-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6.svg)
 ![Supabase](https://img.shields.io/badge/backend-Supabase_PostgreSQL-3ECF8E.svg)
-![Tests](https://img.shields.io/badge/tests-vitest_38_passed-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-vitest_81_passed-brightgreen.svg)
 ![Design](https://img.shields.io/badge/design-Cool_Blue_Glassmorphism-60A5FA.svg)
 
 [🚀 **Visit Live App**](https://abroad-application-hub.vercel.app)  ·  [Getting started](#getting-started)  ·  [How it works](#how-it-works)  ·  [Honest by design](#honest-by-design)
@@ -21,7 +21,7 @@
 
 Applying to universities and scholarships abroad is overwhelming. Admissions rules are scattered across 40-page PDFs, university portals, and embassy notices. Deadlines are easy to miss, and generic advice from search engines often mixes up different degree levels, visa tracks, or requirements.
 
-**Abroad Application Hub** is a personal workspace that keeps your study-abroad journey organized, factual, and stress-free.
+**AbroadAtlas** is a personal workspace that keeps your study-abroad journey organized, factual, and stress-free.
 
 Add an application (or watch a program that hasn't opened yet), attach its official webpage or PDF guidelines, and it:
 
@@ -32,7 +32,7 @@ Add an application (or watch a program that hasn't opened yet), attach its offic
 
 When a requirement is missing from your document, it says so openly instead of making up dates or guessing rules.
 
-> ⚠️ Abroad Application Hub is a preparation and organization workspace, **not an admissions office**. Always double-check final submission dates on your university's official portal.
+> ⚠️ AbroadAtlas is a preparation and organization workspace, **not an admissions office**. Always double-check final submission dates on your university's official portal.
 
 ---
 

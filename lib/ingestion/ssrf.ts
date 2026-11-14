@@ -210,7 +210,7 @@ export async function safeFetchHtml(
         signal: controller.signal,
         redirect: "manual", // Handle redirects manually so every redirect URL is SSRF validated
         headers: {
-          "User-Agent": "AbroadApplicationHub/1.0 (Official Prospectus Ingestion Bot; info@abroadhub.local)",
+          "User-Agent": "AbroadAtlas/1.0 (official admissions page fetcher)",
           Accept: "text/html,application/xhtml+xml,text/plain;q=0.9",
         },
       });
