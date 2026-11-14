@@ -44,6 +44,16 @@ export function AppSidebar({ displayName, signOutAction }: AppSidebarProps) {
       ),
     },
     {
+      label: "Compare",
+      href: "/app/compare",
+      isActive: pathname.startsWith("/app/compare"),
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10H5a1 1 0 01-1-1V8a1 1 0 011-1h4m0 10h6m-6-10h6m0 0v10m0-10h4a1 1 0 011 1v8a1 1 0 01-1 1h-4" />
+        </svg>
+      ),
+    },
+    {
       label: "Documents",
       href: "/app/documents",
       isActive: pathname.startsWith("/app/documents"),

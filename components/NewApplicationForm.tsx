@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useActionState } from "react";
+import { useState, useEffect, useActionState, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -9,6 +9,7 @@ import {
   fetchAdmissionsDetailsAction,
   type ActionResponse,
 } from "@/app/app/applications/actions";
+import { CostFields } from "@/components/CostFields";
 import {
   POPULAR_SCHOLARSHIP_PRESETS,
   type ScholarshipPreset,
@@ -268,7 +269,15 @@ export function NewApplicationForm({ prefill = {} }: { prefill?: NewApplicationP
 
       {/* ── MODE 1: LIVE APPLICATION FORM ── */}
       {entryMode === "live" && (
-        <form action={liveAction} className="space-y-5 animate-fade-in">
+        <form
+          onSubmit={(e) => {
+            // Keep typed values (incl. uncontrolled cost fields) if the server returns an error
+            e.preventDefault();
+            const formData = new FormData(e.currentTarget);
+            startTransition(() => liveAction(formData));
+          }}
+          className="space-y-5 animate-fade-in"
+        >
           {liveState?.error && (
             <div
               className="p-3.5 text-xs rounded-xl bg-red-50/80 border border-red-200 text-red-800 font-medium"
@@ -412,6 +421,9 @@ export function NewApplicationForm({ prefill = {} }: { prefill?: NewApplicationP
               className="w-full p-3 text-sm glass-input rounded-xl"
             />
           </div>
+
+          {/* Optional cost estimate */}
+          <CostFields collapsible />
 
           {/* Actions */}
           <div className="flex items-center justify-between pt-4 border-t border-glass-borderSubtle">

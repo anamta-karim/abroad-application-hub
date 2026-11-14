@@ -1,12 +1,19 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, startTransition } from "react";
 import Link from "next/link";
 import { updateApplicationAction, type ActionResponse } from "@/app/app/applications/actions";
+import { CostFields } from "@/components/CostFields";
 import type { ApplicationStatus, RecordType } from "@/types/database";
 
 interface EditApplicationFormProps {
   application: {
+    cost_currency?: string | null;
+    tuition_per_year?: number | null;
+    living_cost_per_year?: number | null;
+    application_fee?: number | null;
+    funding_per_year?: number | null;
+    duration_years?: number | null;
     id: string;
     title: string;
     record_type: RecordType;
@@ -28,8 +35,16 @@ export function EditApplicationForm({ application }: EditApplicationFormProps) {
   const updateWithId = updateApplicationAction.bind(null, application.id);
   const [state, formAction, isPending] = useActionState(updateWithId, initialState);
 
+  // Submit via onSubmit rather than the `action` prop: React resets a form after
+  // an action runs, which would wipe the user's edits when validation fails.
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    startTransition(() => formAction(formData));
+  }
+
   return (
-    <form action={formAction} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {state?.error && (
         <div
           className="p-3.5 text-xs rounded-xl bg-red-50/80 border border-red-200 text-red-800 font-medium"
@@ -85,9 +100,8 @@ export function EditApplicationForm({ application }: EditApplicationFormProps) {
             <option value="researching">Researching</option>
             <option value="preparing">Preparing Materials</option>
             <option value="submitted">Submitted</option>
-            <option value="interviewing">Interviewing</option>
-            <option value="accepted">Accepted / Awarded</option>
-            <option value="waitlisted">Waitlisted</option>
+            <option value="interview">Interview</option>
+            <option value="offer_received">Offer Received / Awarded</option>
             <option value="rejected">Rejected</option>
             <option value="withdrawn">Withdrawn</option>
           </select>
@@ -215,6 +229,9 @@ export function EditApplicationForm({ application }: EditApplicationFormProps) {
           className="w-full px-4 py-2.5 rounded-xl text-sm glass-input text-ink-deep placeholder:text-ink-subtle"
         />
       </div>
+
+      {/* Costs & funding */}
+      <CostFields defaults={application} />
 
       {/* Form Action Buttons */}
       <div className="pt-2 flex items-center justify-end space-x-3">

@@ -101,6 +101,12 @@ export interface Database {
           user_notes: string | null;
           verification_state: VerificationState;
           archived_at: string | null;
+          cost_currency: string | null;
+          tuition_per_year: number | null;
+          living_cost_per_year: number | null;
+          application_fee: number | null;
+          funding_per_year: number | null;
+          duration_years: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -121,6 +127,12 @@ export interface Database {
           user_notes?: string | null;
           verification_state?: VerificationState;
           archived_at?: string | null;
+          cost_currency?: string | null;
+          tuition_per_year?: number | null;
+          living_cost_per_year?: number | null;
+          application_fee?: number | null;
+          funding_per_year?: number | null;
+          duration_years?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -141,6 +153,12 @@ export interface Database {
           user_notes?: string | null;
           verification_state?: VerificationState;
           archived_at?: string | null;
+          cost_currency?: string | null;
+          tuition_per_year?: number | null;
+          living_cost_per_year?: number | null;
+          application_fee?: number | null;
+          funding_per_year?: number | null;
+          duration_years?: number | null;
           created_at?: string;
           updated_at?: string;
         };

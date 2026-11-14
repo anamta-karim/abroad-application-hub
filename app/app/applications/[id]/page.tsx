@@ -10,6 +10,8 @@ import { ArchiveButton } from "@/components/ArchiveButton";
 import { SourceManager } from "@/components/SourceManager";
 import { FactReviewPanel } from "@/components/FactReviewPanel";
 import { ApplicationPrepHub } from "@/components/ApplicationPrepHub";
+import { CostSummaryCard } from "@/components/CostSummaryCard";
+import { costInputsFromRow } from "@/lib/costs";
 
 interface ApplicationDetailPageProps {
   params: Promise<{
@@ -153,11 +155,17 @@ export default async function ApplicationDetailPage({ params }: ApplicationDetai
         >
           &larr; Back to Dashboard
         </Link>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <ArchiveButton
             applicationId={id}
             isArchived={Boolean(application.archived_at)}
           />
+          <Link
+            href={`/app/compare?ids=${id}`}
+            className="px-3.5 py-1.5 text-xs font-bold text-ink-deep glass-input rounded-xl hover:bg-white transition-colors"
+          >
+            Compare
+          </Link>
           <Link
             href={`/app/applications/${id}/edit`}
             className="px-3.5 py-1.5 text-xs font-bold text-ink-deep glass-input rounded-xl hover:bg-white transition-colors"
@@ -257,6 +265,9 @@ export default async function ApplicationDetailPage({ params }: ApplicationDetai
           )}
         </div>
       </section>
+
+      {/* ── Estimated Cost ── */}
+      <CostSummaryCard applicationId={id} inputs={costInputsFromRow(application as Record<string, unknown>)} />
 
       {/* ── User Notes / Summary ── */}
       {application.user_notes && (

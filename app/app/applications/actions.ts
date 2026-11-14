@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { userOwnsApplications, APPLICATION_NOT_FOUND } from "@/lib/supabase/ownership";
+import { parseCostFields, isMissingColumnError, COSTS_MIGRATION_HINT } from "@/lib/costs";
+
+function hasAnyCostValue(values: Record<string, unknown>): boolean {
+  return Object.values(values).some((v) => v !== null && v !== undefined && v !== "");
+}
 import type {
   RecordType,
   ApplicationStatus,
@@ -47,6 +52,14 @@ export async function createApplicationAction(
     return { error: "Please enter an application title." };
   }
 
+  const costs = parseCostFields(formData);
+  if (!costs.ok) {
+    return { error: costs.error };
+  }
+  // Only send cost columns when something was entered, so creating still
+  // works on a database without the cost migration.
+  const costValues = hasAnyCostValue(costs.values) ? costs.values : {};
+
   // Insert application
   const { data: newApp, error: insertError } = await supabase
     .from("applications")
@@ -64,11 +77,15 @@ export async function createApplicationAction(
       user_notes: userNotes,
       status: initialStatus,
       verification_state: "unreviewed",
+      ...costValues,
     })
     .select("id")
     .single();
 
   if (insertError || !newApp) {
+    if (isMissingColumnError(insertError)) {
+      return { error: COSTS_MIGRATION_HINT };
+    }
     return { error: insertError?.message || "Failed to create application." };
   }
 
@@ -123,23 +140,38 @@ export async function updateApplicationAction(
     return { error: "Please enter an application title." };
   }
 
-  const { error: updateError } = await supabase
+  const costs = parseCostFields(formData);
+  if (!costs.ok) {
+    return { error: costs.error };
+  }
+
+  const baseUpdate = {
+    title,
+    record_type: recordType,
+    institution_or_provider: institution,
+    country,
+    degree_level: degreeLevel,
+    field_of_study: fieldOfStudy,
+    study_period: studyPeriod,
+    deadline,
+    official_url: officialUrl,
+    user_notes: userNotes,
+    status: newStatus,
+    updated_at: new Date().toISOString(),
+  };
+
+  let { error: updateError } = await supabase
     .from("applications")
-    .update({
-      title,
-      record_type: recordType,
-      institution_or_provider: institution,
-      country,
-      degree_level: degreeLevel,
-      field_of_study: fieldOfStudy,
-      study_period: studyPeriod,
-      deadline,
-      official_url: officialUrl,
-      user_notes: userNotes,
-      status: newStatus,
-      updated_at: new Date().toISOString(),
-    })
+    .update({ ...baseUpdate, ...costs.values })
     .eq("id", applicationId);
+
+  // Database without the cost migration: still save the other fields if no costs were entered
+  if (isMissingColumnError(updateError)) {
+    if (hasAnyCostValue(costs.values)) {
+      return { error: COSTS_MIGRATION_HINT };
+    }
+    ({ error: updateError } = await supabase.from("applications").update(baseUpdate).eq("id", applicationId));
+  }
 
   if (updateError) {
     return { error: updateError.message };
