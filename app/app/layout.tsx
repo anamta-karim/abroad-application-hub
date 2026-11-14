@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { signOutAction } from "@/app/auth/actions";
 import { AppSidebar } from "@/components/AppSidebar";
 
@@ -9,20 +10,17 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+
+  // Verify the session and load the profile in parallel. Row-level security
+  // limits profiles to the caller's own row, so no user id is needed up front.
+  const [user, { data: profile }] = await Promise.all([
+    getCurrentUser(),
+    supabase.from("profiles").select("display_name").limit(1).maybeSingle(),
+  ]);
 
   if (!user) {
     redirect("/login");
   }
-
-  // Fetch user profile from database
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name")
-    .eq("id", user.id)
-    .single();
 
   const displayName =
     profile?.display_name ||

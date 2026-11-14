@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { StatusSelect } from "@/components/StatusSelect";
 import { RequirementList } from "@/components/RequirementList";
 import { TaskList } from "@/components/TaskList";
@@ -22,112 +23,103 @@ interface ApplicationDetailPageProps {
 export default async function ApplicationDetailPage({ params }: ApplicationDetailPageProps) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+
+  // Every query below is independent, so they run in one parallel batch rather
+  // than ten sequential round trips. Linked applications are fetched in both
+  // directions and chosen once we know whether this is a program or scholarship.
+  const [
+    user,
+    { data: application, error: appError },
+    { data: requirements },
+    { data: tasks },
+    { data: statusHistory },
+    { data: scholarshipLinks },
+    { data: programLinks },
+    { data: sourcesData },
+    { data: factsData },
+    { data: allApps },
+  ] = await Promise.all([
+    getCurrentUser(),
+    supabase.from("applications").select("*").eq("id", id).single(),
+    supabase
+      .from("document_requirements")
+      .select("id, document_type, notes, due_date, status")
+      .eq("application_id", id)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("tasks")
+      .select("id, title, description, due_date, status")
+      .eq("application_id", id)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("status_history")
+      .select("id, from_status, to_status, note, changed_at")
+      .eq("application_id", id)
+      .order("changed_at", { ascending: false }),
+    supabase
+      .from("application_links")
+      .select("id, relationship_note, scholarship:scholarship_application_id (id, title, record_type, institution_or_provider, status)")
+      .eq("program_application_id", id),
+    supabase
+      .from("application_links")
+      .select("id, relationship_note, program:program_application_id (id, title, record_type, institution_or_provider, status)")
+      .eq("scholarship_application_id", id),
+    supabase
+      .from("sources")
+      .select("id, source_type, display_name, source_url, storage_path, file_size_bytes, ingestion_status, error_code, created_at")
+      .eq("application_id", id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("extracted_facts")
+      .select("id, fact_type, label, value, confidence, review_state, created_at")
+      .eq("application_id", id)
+      .order("created_at", { ascending: false }),
+    supabase.from("applications").select("id, title, record_type, institution_or_provider"),
+  ]);
 
   if (!user) {
     redirect("/login");
   }
 
-  // 1. Fetch application record
-  const { data: application, error: appError } = await supabase
-    .from("applications")
-    .select("*")
-    .eq("id", id)
-    .single();
-
   if (appError || !application) {
     notFound();
   }
 
-  // 2. Fetch document requirements
-  const { data: requirements } = await supabase
-    .from("document_requirements")
-    .select("id, document_type, notes, due_date, status")
-    .eq("application_id", id)
-    .order("created_at", { ascending: true });
-
-  // 3. Fetch tasks
-  const { data: tasks } = await supabase
-    .from("tasks")
-    .select("id, title, description, due_date, status")
-    .eq("application_id", id)
-    .order("created_at", { ascending: true });
-
-  // 4. Fetch status history
-  const { data: statusHistory } = await supabase
-    .from("status_history")
-    .select("id, from_status, to_status, note, changed_at")
-    .eq("application_id", id)
-    .order("changed_at", { ascending: false });
-
-  // 5. Fetch linked applications
   const isProgram = application.record_type === "program";
 
-  let linkedAppsFormatted: any[] = [];
-  if (isProgram) {
-    const { data: links } = await supabase
-      .from("application_links")
-      .select("id, relationship_note, scholarship:scholarship_application_id (id, title, record_type, institution_or_provider, status)")
-      .eq("program_application_id", id);
-
-    if (links) {
-      linkedAppsFormatted = links.map((l: any) => ({
-        linkId: l.id,
-        id: l.scholarship?.id,
-        title: l.scholarship?.title,
-        record_type: l.scholarship?.record_type,
-        institution_or_provider: l.scholarship?.institution_or_provider,
-        status: l.scholarship?.status,
-        relationship_note: l.relationship_note,
-      })).filter((x: any) => x.id);
-    }
-  } else {
-    const { data: links } = await supabase
-      .from("application_links")
-      .select("id, relationship_note, program:program_application_id (id, title, record_type, institution_or_provider, status)")
-      .eq("scholarship_application_id", id);
-
-    if (links) {
-      linkedAppsFormatted = links.map((l: any) => ({
-        linkId: l.id,
-        id: l.program?.id,
-        title: l.program?.title,
-        record_type: l.program?.record_type,
-        institution_or_provider: l.program?.institution_or_provider,
-        status: l.program?.status,
-        relationship_note: l.relationship_note,
-      })).filter((x: any) => x.id);
-    }
-  }
-
-  // 6. Fetch sources and extracted facts
-  const { data: sourcesData } = await supabase
-    .from("sources")
-    .select("id, source_type, display_name, source_url, storage_path, file_size_bytes, ingestion_status, error_code, created_at")
-    .eq("application_id", id)
-    .order("created_at", { ascending: false });
+  const linkedAppsFormatted: any[] = isProgram
+    ? ((scholarshipLinks || []) as any[])
+        .map((l) => ({
+          linkId: l.id,
+          id: l.scholarship?.id,
+          title: l.scholarship?.title,
+          record_type: l.scholarship?.record_type,
+          institution_or_provider: l.scholarship?.institution_or_provider,
+          status: l.scholarship?.status,
+          relationship_note: l.relationship_note,
+        }))
+        .filter((x) => x.id)
+    : ((programLinks || []) as any[])
+        .map((l) => ({
+          linkId: l.id,
+          id: l.program?.id,
+          title: l.program?.title,
+          record_type: l.program?.record_type,
+          institution_or_provider: l.program?.institution_or_provider,
+          status: l.program?.status,
+          relationship_note: l.relationship_note,
+        }))
+        .filter((x) => x.id);
 
   const sources = (sourcesData || []) as any[];
-
-  const { data: factsData } = await supabase
-    .from("extracted_facts")
-    .select("id, fact_type, label, value, confidence, review_state, created_at")
-    .eq("application_id", id)
-    .order("created_at", { ascending: false });
-
   const facts = (factsData || []) as any[];
 
-  // 7. Fetch available apps to link (opposite record type)
+  // Applications of the opposite type that aren't linked yet
   const targetRecordType = isProgram ? "scholarship" : "program";
-  const { data: oppositeApps } = await supabase
-    .from("applications")
-    .select("id, title, record_type, institution_or_provider")
-    .eq("record_type", targetRecordType);
-
   const linkedIds = new Set(linkedAppsFormatted.map((a) => a.id));
-  const availableAppsToLink = (oppositeApps || []).filter((a) => !linkedIds.has(a.id));
+  const availableAppsToLink = (allApps || []).filter(
+    (a) => a.record_type === targetRecordType && !linkedIds.has(a.id)
+  );
 
   // Compute deadline countdown
   let deadlineCountdown = null;

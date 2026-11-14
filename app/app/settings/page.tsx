@@ -1,26 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { headers } from "next/headers";
 import { AccountDataManagement } from "@/components/AccountDataManagement";
 import { CalendarFeedSettings } from "@/components/CalendarFeedSettings";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name, updated_at")
-    .eq("id", user?.id || "")
-    .single();
-
-  // Private calendar feed (table added by 20261115000000_calendar_feeds.sql)
-  const { data: feedData, error: feedError } = await supabase
-    .from("calendar_feeds" as any)
-    .select("token")
-    .eq("user_id", user?.id || "")
-    .maybeSingle();
+  // One parallel batch; row-level security scopes profile and feed to the caller.
+  // The calendar feed table comes from 20261115000000_calendar_feeds.sql.
+  const [user, { data: profile }, { data: feedData, error: feedError }] = await Promise.all([
+    getCurrentUser(),
+    supabase.from("profiles").select("display_name, updated_at").limit(1).maybeSingle(),
+    supabase.from("calendar_feeds" as any).select("token").limit(1).maybeSingle(),
+  ]);
   const feed = feedData as { token: string } | null;
   const feedMigrationMissing = Boolean(
     feedError && (feedError.code === "PGRST205" || feedError.code === "42P01")

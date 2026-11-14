@@ -9,26 +9,34 @@ import type { OpeningReminder } from "@/types/database";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  // Query owned applications
-  const { data: applicationsData } = await supabase
-    .from("applications")
-    .select(
-      "id, title, record_type, institution_or_provider, status, deadline, verification_state, degree_level, country, archived_at, updated_at"
-    )
-    .order("created_at", { ascending: false });
+  // Sign-in is enforced by middleware and the /app layout, and row-level
+  // security scopes every query to the user, so all four queries run at once
+  // instead of one after another (each is a network round trip).
+  const [
+    { data: applicationsData },
+    { data: remindersData },
+    { data: docRequirementsData },
+    { data: tasksData },
+  ] = await Promise.all([
+    supabase
+      .from("applications")
+      .select(
+        "id, title, record_type, institution_or_provider, status, deadline, verification_state, degree_level, country, archived_at, updated_at"
+      )
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("opening_reminders" as any)
+      .select("*")
+      .order("expected_open_date", { ascending: true }),
+    supabase.from("document_requirements").select("id, application_id, status, document_type, due_date"),
+    supabase
+      .from("tasks")
+      .select("id, application_id, title, due_date, status")
+      .in("status", ["open", "in_progress"]),
+  ]);
 
   const applications = (applicationsData || []) as any[];
-
-  // Query opening reminders
-  const { data: remindersData } = await supabase
-    .from("opening_reminders" as any)
-    .select("*")
-    .order("expected_open_date", { ascending: true });
-
   const reminders: OpeningReminder[] = (remindersData || []) as any[];
 
   const now = new Date();
@@ -45,18 +53,7 @@ export default async function DashboardPage() {
 
   const hasApplications = applications.length > 0 || reminders.length > 0;
 
-  // Query document requirements across user applications
-  const { data: docRequirementsData } = await supabase
-    .from("document_requirements")
-    .select("id, application_id, status, document_type, due_date");
-
   const docRequirements = docRequirementsData || [];
-
-  // Open tasks feed the "This week" panel
-  const { data: tasksData } = await supabase
-    .from("tasks")
-    .select("id, application_id, title, due_date, status")
-    .in("status", ["open", "in_progress"]);
 
   const weeklyItems = buildWeeklyActions({
     apps: applications,
