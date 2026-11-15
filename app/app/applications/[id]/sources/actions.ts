@@ -1,5 +1,6 @@
 "use server";
 
+import { readFactValue } from "@/lib/factValue";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { safeFetchHtml, validateUrlForSSRF } from "@/lib/ingestion/ssrf";
@@ -8,9 +9,11 @@ import { extractTextFromPdf, PdfExtractionError } from "@/lib/ingestion/pdf";
 import { chunkDocumentText, computeSha256 } from "@/lib/ingestion/chunker";
 import { extractCandidateFacts } from "@/lib/ingestion/extractor";
 import { parseFactDate } from "@/lib/ingestion/dates";
+import { consumeUsage, limitReachedMessage } from "@/lib/usage";
 import { userOwnsApplications, APPLICATION_NOT_FOUND } from "@/lib/supabase/ownership";
 import type { ActionResponse } from "@/app/app/applications/actions";
 import type { ReviewState } from "@/types/database";
+import { errorMessage } from "@/lib/errors";
 
 /** Private bucket created in 20261101000000_init_schema.sql. */
 const SOURCES_BUCKET = "application-sources";
@@ -39,6 +42,11 @@ export async function ingestWebpageAction(
 
   if (!(await userOwnsApplications(supabase, user.id, [applicationId]))) {
     return { error: APPLICATION_NOT_FOUND };
+  }
+
+  const fetchUsage = await consumeUsage(supabase, "fetch");
+  if (!fetchUsage.allowed) {
+    return { error: limitReachedMessage("fetch", fetchUsage.limit) };
   }
 
   // 1. SSRF Pre-flight Validation
@@ -163,17 +171,17 @@ export async function ingestWebpageAction(
 
     revalidatePath(`/app/applications/${applicationId}`);
     return { success: true };
-  } catch (err: any) {
+  } catch (err) {
     // Graceful error status update
     await supabase
       .from("sources")
       .update({
         ingestion_status: "failed",
-        error_code: err.message?.slice(0, 200) || "Ingestion error",
+        error_code: errorMessage(err).slice(0, 200) || "Ingestion error",
       })
       .eq("id", source.id);
 
-    return { error: err.message || "Failed to ingest webpage." };
+    return { error: errorMessage(err) || "Failed to ingest webpage." };
   }
 }
 
@@ -226,7 +234,7 @@ export async function ingestPdfAction(
     extracted = await extractTextFromPdf(buffer);
   } catch (err) {
     if (err instanceof PdfExtractionError) {
-      return { error: err.message };
+      return { error: errorMessage(err) };
     }
     return { error: "This PDF couldn't be read. Try re-downloading it from the official site." };
   }
@@ -359,7 +367,7 @@ export async function ingestPdfAction(
 
     revalidatePath(`/app/applications/${applicationId}`);
     return { success: true };
-  } catch (err: any) {
+  } catch (err) {
     // Don't leave an orphaned file behind when extraction fails after upload
     if (uploaded) {
       await supabase.storage.from(SOURCES_BUCKET).remove([storagePath]);
@@ -370,11 +378,11 @@ export async function ingestPdfAction(
       .update({
         ingestion_status: "failed",
         storage_path: null,
-        error_code: err.message?.slice(0, 200) || "PDF extraction error",
+        error_code: errorMessage(err).slice(0, 200) || "PDF extraction error",
       })
       .eq("id", source.id);
 
-    return { error: err.message || "Failed to extract PDF text." };
+    return { error: errorMessage(err) || "Failed to extract PDF text." };
   }
 }
 
@@ -438,8 +446,8 @@ export async function reviewFactAction(
 
   // If confirmed or edited: promote to application data!
   if (action === "confirm" || action === "edit") {
-    const valObj = updatedValue as any;
-    const finalVal = valObj?.extractedValue || fact.label;
+    const valObj = readFactValue(updatedValue);
+    const finalVal = valObj.extractedValue || fact.label;
 
     // 1. If document requirement, add to document_requirements checklist
     if (fact.fact_type === "document") {
@@ -458,7 +466,7 @@ export async function reviewFactAction(
           requirement_fact_id: fact.id,
           document_type: finalVal,
           status: "not_started",
-          notes: `Verified from source: "${valObj?.context || fact.label}"`,
+          notes: `Verified from source: "${valObj.context || fact.label}"`,
         });
         if (reqError) {
           revalidatePath(`/app/applications/${factApplicationId}`);

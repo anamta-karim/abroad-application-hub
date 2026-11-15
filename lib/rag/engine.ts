@@ -1,6 +1,7 @@
 import { retrieveRelevantChunks, type RankedChunk } from "./retrieval";
 import { createClient } from "@/lib/supabase/server";
-import { generateWithGemini } from "@/lib/ai/gemini";
+import { generateWithGemini, isGeminiConfigured } from "@/lib/ai/gemini";
+import { consumeUsage, limitReachedMessage } from "@/lib/usage";
 import {
   buildBlueprint,
   buildBlueprintPrompt,
@@ -8,6 +9,7 @@ import {
   type BlueprintChunk,
   type BlueprintInput,
   type BlueprintType,
+  toBlueprintFactValue,
 } from "./blueprint";
 
 export interface CitationItem {
@@ -27,6 +29,18 @@ export interface GroundedResponse {
   workflowType?: "qa" | "sop" | "interview" | "lor" | "study_plan";
   /** "ai" when Gemini wrote the text from the evidence, "sources" when assembled directly. */
   generatedBy?: "ai" | "sources";
+  /** Shown above the answer, e.g. when today's AI limit has been reached. */
+  notice?: string;
+}
+
+/**
+ * Whether this request may use the AI model: only when a key is configured
+ * and the user is under today's AI limit. Counts one use when it says yes.
+ */
+async function aiBudget(): Promise<{ ok: boolean; notice?: string }> {
+  if (!isGeminiConfigured()) return { ok: false };
+  const usage = await consumeUsage(await createClient(), "ai");
+  return usage.allowed ? { ok: true } : { ok: false, notice: limitReachedMessage("ai", usage.limit) };
 }
 
 /**
@@ -67,8 +81,9 @@ export async function generateGroundedAnswer(
     quote: extractMostRelevantSentence(c.content, question),
   }));
 
-  // 4. With a Gemini key, let the model phrase a strictly grounded answer
-  const aiAnswer = await answerWithGemini(question, relevantChunks);
+  // 4. With a Gemini key (and AI budget left today), let the model phrase a strictly grounded answer
+  const budget = await aiBudget();
+  const aiAnswer = budget.ok ? await answerWithGemini(question, relevantChunks) : null;
   if (aiAnswer) {
     return {
       answer: aiAnswer.answer,
@@ -81,7 +96,7 @@ export async function generateGroundedAnswer(
   }
 
   // 5. Deterministic grounded answer built directly from the sources
-  return buildDeterministicQaResponse(question, relevantChunks, citations);
+  return { ...buildDeterministicQaResponse(question, relevantChunks, citations), notice: budget.notice };
 }
 
 /**
@@ -116,7 +131,7 @@ async function generateApplicationBlueprint(
     };
   }
 
-  const chunks: BlueprintChunk[] = ((chunkRows || []) as any[]).map((c) => ({
+  const chunks: BlueprintChunk[] = (chunkRows || []).map((c) => ({
     id: c.id,
     sourceId: c.source_id,
     sourceTitle: c.sources?.display_name || "Official source",
@@ -125,7 +140,7 @@ async function generateApplicationBlueprint(
     content: c.content || "",
   }));
 
-  const appRow = app as any;
+  const appRow = app;
   const input: BlueprintInput = {
     app: {
       title: appRow.title,
@@ -138,8 +153,8 @@ async function generateApplicationBlueprint(
       deadline: appRow.deadline,
       duration_years: appRow.duration_years == null ? null : Number(appRow.duration_years),
     },
-    facts: (facts || []) as any,
-    requirements: (requirements || []) as any,
+    facts: (facts || []).map((f) => ({ ...f, value: toBlueprintFactValue(f.value) })),
+    requirements: requirements || [],
     chunks,
   };
 
@@ -148,9 +163,10 @@ async function generateApplicationBlueprint(
     return { ...built, workflowType: type, generatedBy: "sources" };
   }
 
-  // Let the model write the blueprint from the same evidence, if configured
+  // Let the model write the blueprint from the same evidence, if configured and within today's limit
+  const budget = await aiBudget();
   const { system, prompt } = buildBlueprintPrompt(type, input, built.evidence);
-  const aiText = await generateWithGemini({ system, prompt, temperature: 0.3, maxOutputTokens: 1600 });
+  const aiText = budget.ok ? await generateWithGemini({ system, prompt, temperature: 0.3, maxOutputTokens: 1600 }) : null;
   if (aiText && aiText.includes("####")) {
     return {
       answer: resolveEvidenceMarkers(aiText, built.evidence),
@@ -169,6 +185,7 @@ async function generateApplicationBlueprint(
     strategicSuggestions: built.strategicSuggestions,
     workflowType: type,
     generatedBy: "sources",
+    notice: budget.notice,
   };
 }
 

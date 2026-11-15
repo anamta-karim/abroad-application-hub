@@ -17,7 +17,8 @@ export {
  * Fetches an official URL safely and extracts admissions/scholarship metadata.
  */
 export async function fetchAndExtractAdmissionsMetadata(
-  targetUrl: string
+  targetUrl: string,
+  options: { useAi?: boolean } = {}
 ): Promise<AdmissionsMetadata> {
   const { text: html, finalUrl } = await safeFetchHtml(targetUrl, {
     maxSizeBytes: 4 * 1024 * 1024,
@@ -28,7 +29,7 @@ export async function fetchAndExtractAdmissionsMetadata(
   const deterministicMeta = extractMetadataFromHtml(html, finalUrl);
 
   // 2. If a Gemini API key is configured, refine with the model
-  if (isGeminiConfigured()) {
+  if (isGeminiConfigured() && options.useAi !== false) {
     try {
       const refined = await refineMetadataWithGemini(
         html,

@@ -187,6 +187,10 @@ export function ApplicationPrepHub({ applicationId, hasSources }: ApplicationPre
             </span>
           </div>
 
+          {response.notice && (
+            <p className="p-3 text-xs rounded-xl bg-amber-50 border border-amber-200 text-amber-900">{response.notice}</p>
+          )}
+
           {/* Formatted Factual Answer Body */}
           <GroundedAnswerView content={response.answer} />
 

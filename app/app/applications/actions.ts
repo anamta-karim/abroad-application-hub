@@ -5,6 +5,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { userOwnsApplications, APPLICATION_NOT_FOUND } from "@/lib/supabase/ownership";
 import { parseCostFields, isMissingColumnError, COSTS_MIGRATION_HINT } from "@/lib/costs";
+import { consumeUsage, limitReachedMessage } from "@/lib/usage";
+import { isGeminiConfigured } from "@/lib/ai/gemini";
+import { errorMessage } from "@/lib/errors";
 
 function hasAnyCostValue(values: Record<string, unknown>): boolean {
   return Object.values(values).some((v) => v !== null && v !== undefined && v !== "");
@@ -672,7 +675,7 @@ export async function createOpeningReminderAction(
     return { error: "Please enter the expected opening date." };
   }
 
-  const { error: insertError } = await supabase.from("opening_reminders" as any).insert({
+  const { error: insertError } = await supabase.from("opening_reminders").insert({
     user_id: user.id,
     title,
     record_type: recordType,
@@ -705,7 +708,7 @@ export async function deleteOpeningReminderAction(
   }
 
   const { error } = await supabase
-    .from("opening_reminders" as any)
+    .from("opening_reminders")
     .delete()
     .eq("id", reminderId)
     .eq("user_id", user.id);
@@ -732,12 +735,12 @@ export async function convertReminderToApplicationAction(
 
   // Fetch reminder details
   const { data: reminderData } = await supabase
-    .from("opening_reminders" as any)
+    .from("opening_reminders")
     .select("*")
     .eq("id", reminderId)
     .single();
 
-  const reminder = reminderData as any;
+  const reminder = reminderData;
 
   if (!reminder || reminder.user_id !== user.id) {
     return { error: "Reminder not found." };
@@ -772,7 +775,7 @@ export async function convertReminderToApplicationAction(
 
   // Mark reminder as converted
   await supabase
-    .from("opening_reminders" as any)
+    .from("opening_reminders")
     .update({
       status: "converted",
       converted_application_id: newApp.id,
@@ -799,14 +802,21 @@ export async function fetchAdmissionsDetailsAction(targetUrl: string): Promise<{
     return { success: false, error: "Authentication required." };
   }
 
+  const fetchUsage = await consumeUsage(supabase, "fetch");
+  if (!fetchUsage.allowed) {
+    return { success: false, error: limitReachedMessage("fetch", fetchUsage.limit) };
+  }
+  // AI refinement counts against the AI limit; without budget the page is still read directly
+  const useAi = isGeminiConfigured() ? (await consumeUsage(supabase, "ai")).allowed : false;
+
   try {
     const { fetchAndExtractAdmissionsMetadata } = await import("@/lib/ingestion/metadataExtractor");
-    const data = await fetchAndExtractAdmissionsMetadata(targetUrl);
+    const data = await fetchAndExtractAdmissionsMetadata(targetUrl, { useAi });
     return { success: true, data };
-  } catch (err: any) {
+  } catch (err) {
     return {
       success: false,
-      error: err?.message || "Failed to fetch admissions details from this URL.",
+      error: errorMessage(err) || "Failed to fetch admissions details from this URL.",
     };
   }
 }

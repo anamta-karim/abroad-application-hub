@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { consumeUsage, limitReachedMessage } from "@/lib/usage";
+import { isGeminiConfigured } from "@/lib/ai/gemini";
 import {
   fetchAndExtractAdmissionsMetadata,
   POPULAR_SCHOLARSHIP_PRESETS,
 } from "@/lib/ingestion/metadataExtractor";
+import { errorMessage } from "@/lib/errors";
 
 /**
  * Only signed-in users may use this route: it makes the server fetch an
@@ -22,6 +25,22 @@ async function requireUser(): Promise<NextResponse | null> {
     );
   }
   return null;
+}
+
+/**
+ * Counts one web fetch against the user's daily limit (and one AI use if the
+ * model will refine the result). Returns an error response when over the limit.
+ */
+async function claimFetch(): Promise<{ error: NextResponse } | { useAi: boolean }> {
+  const supabase = await createClient();
+  const fetchUsage = await consumeUsage(supabase, "fetch");
+  if (!fetchUsage.allowed) {
+    return {
+      error: NextResponse.json({ success: false, error: limitReachedMessage("fetch", fetchUsage.limit) }, { status: 429 }),
+    };
+  }
+  const useAi = isGeminiConfigured() ? (await consumeUsage(supabase, "ai")).allowed : false;
+  return { useAi };
 }
 
 export async function GET(request: NextRequest) {
@@ -50,14 +69,17 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const claim = await claimFetch();
+  if ("error" in claim) return claim.error;
+
   try {
-    const metadata = await fetchAndExtractAdmissionsMetadata(urlParam);
+    const metadata = await fetchAndExtractAdmissionsMetadata(urlParam, { useAi: claim.useAi });
     return NextResponse.json({ success: true, data: metadata });
-  } catch (err: any) {
+  } catch (err) {
     return NextResponse.json(
       {
         success: false,
-        error: err?.message || "Failed to fetch or extract metadata from URL.",
+        error: errorMessage(err) || "Failed to fetch or extract metadata from URL.",
       },
       { status: 400 }
     );
@@ -79,13 +101,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const metadata = await fetchAndExtractAdmissionsMetadata(url);
+    const claim = await claimFetch();
+    if ("error" in claim) return claim.error;
+
+    const metadata = await fetchAndExtractAdmissionsMetadata(url, { useAi: claim.useAi });
     return NextResponse.json({ success: true, data: metadata });
-  } catch (err: any) {
+  } catch (err) {
     return NextResponse.json(
       {
         success: false,
-        error: err?.message || "Failed to process admissions URL.",
+        error: errorMessage(err) || "Failed to process admissions URL.",
       },
       { status: 400 }
     );

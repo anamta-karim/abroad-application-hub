@@ -19,6 +19,10 @@ const envSchema = z.object({
   REMINDER_FROM_EMAIL: z.string().optional(),
   CRON_SECRET: z.string().optional(),
   REMINDER_ALLOWED_EMAILS: z.string().optional(),
+  DAILY_AI_LIMIT: z.string().optional(),
+  DAILY_FETCH_LIMIT: z.string().optional(),
+  DAILY_FEEDBACK_LIMIT: z.string().optional(),
+  ADMIN_EMAILS: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -40,6 +44,10 @@ export function validateEnv(): {
     REMINDER_FROM_EMAIL: process.env.REMINDER_FROM_EMAIL,
     CRON_SECRET: process.env.CRON_SECRET,
     REMINDER_ALLOWED_EMAILS: process.env.REMINDER_ALLOWED_EMAILS,
+    DAILY_AI_LIMIT: process.env.DAILY_AI_LIMIT,
+    DAILY_FETCH_LIMIT: process.env.DAILY_FETCH_LIMIT,
+    DAILY_FEEDBACK_LIMIT: process.env.DAILY_FEEDBACK_LIMIT,
+    ADMIN_EMAILS: process.env.ADMIN_EMAILS,
   });
 
   if (!result.success) {
