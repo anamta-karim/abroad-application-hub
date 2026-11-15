@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { NewApplicationForm, type NewApplicationPrefill } from "@/components/NewApplicationForm";
+import { SampleApplicationButton } from "@/components/SampleApplicationButton";
 
 interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -44,6 +45,12 @@ export default async function NewApplicationPage({ searchParams }: PageProps) {
             ? `Pre-filled from Discover${prefill.institution ? ` for ${prefill.institution}` : ""}. Add the program name and your deadline.`
             : "Add a target university program or scholarship application to your workspace."}
         </p>
+        {!hasPrefill && (
+          <p className="text-xs text-ink-muted flex flex-wrap items-center gap-1.5">
+            Just exploring? <SampleApplicationButton variant="link" />
+            <span>(fictional data, delete any time)</span>
+          </p>
+        )}
       </div>
 
       <div className="glass-stage rounded-3xl p-6 sm:p-8">

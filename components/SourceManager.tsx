@@ -177,7 +177,7 @@ export function SourceManager({ applicationId, sources }: SourceManagerProps) {
             >
               <div className="flex items-start space-x-3 min-w-0">
                 <div className="w-8 h-8 rounded-xl glass-badge-blue flex items-center justify-center font-bold text-sm flex-shrink-0">
-                  {source.source_type === "pdf" ? "📄" : "🔗"}
+                  {source.source_type === "pdf" ? "📄" : source.source_type === "pasted_text" ? "📝" : "🔗"}
                 </div>
                 <div className="space-y-0.5 min-w-0">
                   <div className="flex items-center gap-2">
@@ -198,6 +198,8 @@ export function SourceManager({ applicationId, sources }: SourceManagerProps) {
                   <p className="text-[11px] text-ink-muted truncate">
                     {source.source_type === "pdf"
                       ? `PDF File • ${source.file_size_bytes ? `${Math.round(source.file_size_bytes / 1024)} KB` : ""}`
+                      : source.source_type === "pasted_text"
+                      ? "Pasted text"
                       : source.source_url || "Webpage source"}
                   </p>
 

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ApplicationDeck } from "@/components/ApplicationDeck";
 import { OpeningNudgeBanner } from "@/components/OpeningNudgeBanner";
 import { ThisWeekPanel } from "@/components/ThisWeekPanel";
+import { SampleApplicationButton } from "@/components/SampleApplicationButton";
 import { buildWeeklyActions } from "@/lib/weekly";
 import { todayString } from "@/lib/calendar";
 import type { OpeningReminder } from "@/types/database";
@@ -26,7 +27,7 @@ export default async function DashboardPage() {
       )
       .order("created_at", { ascending: false }),
     supabase
-      .from("opening_reminders" as any)
+      .from("opening_reminders")
       .select("*")
       .order("expected_open_date", { ascending: true }),
     supabase.from("document_requirements").select("id, application_id, status, document_type, due_date"),
@@ -36,8 +37,8 @@ export default async function DashboardPage() {
       .in("status", ["open", "in_progress"]),
   ]);
 
-  const applications = (applicationsData || []) as any[];
-  const reminders: OpeningReminder[] = (remindersData || []) as any[];
+  const applications = applicationsData || [];
+  const reminders: OpeningReminder[] = remindersData || [];
 
   const now = new Date();
   const todayDateStr = now.toISOString().split("T")[0]; // YYYY-MM-DD
@@ -153,14 +154,19 @@ export default async function DashboardPage() {
               </p>
             </div>
 
-            <div className="pt-2">
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
                 href="/app/applications/new"
                 className="inline-flex items-center justify-center h-12 px-8 text-sm font-bold text-white bg-gradient-to-r from-brand to-brand-dark hover:from-brand-hover hover:to-brand rounded-xl shadow-lg shadow-brand/25 active:scale-95 transition-all"
               >
                 + Add your first application
               </Link>
+              <SampleApplicationButton />
             </div>
+            <p className="text-xs text-ink-muted">
+              Not sure where to start? The sample is a fictional program with a prospectus, checklist, costs and tasks
+              already filled in, so you can try every feature. Delete it whenever you like.
+            </p>
 
             {/* Quiet, relevant onboarding note */}
             <div className="pt-6 border-t border-glass-borderSubtle text-xs text-ink-muted max-w-lg mx-auto leading-relaxed">
