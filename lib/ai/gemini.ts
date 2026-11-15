@@ -31,12 +31,19 @@ export interface GeminiRequest {
   /** Ask for a JSON response (application/json). */
   json?: boolean;
   timeoutMs?: number;
+  /** A file sent with the prompt, e.g. a PDF (base64, max ~20 MB per request). */
+  inlineData?: { mimeType: string; data: string };
 }
 
 /** Builds the generateContent request body (exported for tests). */
 export function buildGeminiBody(req: GeminiRequest): Record<string, unknown> {
   const body: Record<string, unknown> = {
-    contents: [{ role: "user", parts: [{ text: req.prompt }] }],
+    contents: [
+      {
+        role: "user",
+        parts: [...(req.inlineData ? [{ inlineData: req.inlineData }] : []), { text: req.prompt }],
+      },
+    ],
     generationConfig: {
       temperature: req.temperature ?? 0.2,
       maxOutputTokens: req.maxOutputTokens ?? 1200,

@@ -8,7 +8,7 @@
 ![React](https://img.shields.io/badge/React-19-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6.svg)
 ![Supabase](https://img.shields.io/badge/backend-Supabase_PostgreSQL-3ECF8E.svg)
-![Tests](https://img.shields.io/badge/tests-vitest_166_passed-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-vitest_176_passed-brightgreen.svg)
 ![Design](https://img.shields.io/badge/design-Cool_Blue_Glassmorphism-60A5FA.svg)
 
 [🚀 **Visit Live App**](https://abroad-application-hub.vercel.app)  ·  [Getting started](#getting-started)  ·  [How it works](#how-it-works)  ·  [Honest by design](#honest-by-design)
@@ -65,7 +65,7 @@ When a requirement is missing from your document, it says so openly instead of m
 | 💰 **Costs & Compare** | Enter tuition, living costs, fees and funding | Net cost per application, and a side-by-side comparison of up to 4 applications in one currency (ECB exchange rates) |
 | ✅ **Eligibility Check** | Add your GPA, test scores, work experience and degree once | Every application checked against the requirements stated in its own sources (GPA, IELTS/TOEFL/PTE/Duolingo, GRE/GMAT, experience, prior degree), each with its quote and page; English tests count as alternatives |
 | 🗂️ **Document Checklist** | Tick the common documents you already have | Each application's checklist matched against them: what's covered, what's still needed, what expires before the deadline, and what's specific to that application |
-| 📄 **Official Source Ingestion** | Paste an admissions link or upload a prospectus PDF | Text extracted with page numbers and section titles; suggested deadlines and required documents for you to confirm |
+| 📄 **Official Source Ingestion** | Paste an admissions link or upload a prospectus PDF | Text extracted with page numbers and section titles (scanned PDFs are read with OCR); suggested deadlines and required documents for you to confirm |
 | 💬 **Grounded Q&A** | Ask *"What IELTS score is required?"* | An answer quoted from your sources with the page number, or an honest "not found" |
 | 📝 **Application-Specific Blueprints** | Click **SOP**, **Interview**, **LOR** or **Study Plan** | A plan built from that application's own requirements: quoted limits and rules, a tailored structure, a timeline counted back from its deadline, and a list of what the sources don't say |
 | 🧪 **Sample Application** | Click **Try a sample application** on an empty dashboard | A fictional program with a source, suggested facts, a checklist, tasks and costs, so every feature can be explored before adding real data |
@@ -86,7 +86,7 @@ When a requirement is missing from your document, it says so openly instead of m
 | **Row-Level Security (RLS)** | PostgreSQL policies ensure complete owner isolation; no user can ever query or view another user's documents or applications |
 | **Clean Glassmorphism UI** | A tailored Cool Blue frosted glass design system with backdrop blur, ambient color glow, and accessible contrast |
 | **Zero-Cost Deployment** | Fully functional without paid subscriptions: free-tier Supabase, Next.js on Vercel (running in the same region as the database), and an optional Gemini API key |
-| **Automated Testing** | 166 automated tests covering security, grounding, PDF extraction, blueprints, costs, calendar, document matching, eligibility and usage limits, run on every push by GitHub Actions |
+| **Automated Testing** | 176 automated tests covering security, grounding, PDF extraction and OCR, blueprints, costs, calendar, document matching, eligibility and usage limits, run on every push by GitHub Actions |
 
 ---
 
@@ -245,7 +245,7 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser!
 ```bash
 npm test
 ```
-All 166 tests run locally (the same checks GitHub runs on every push).
+All 176 tests run locally (the same checks GitHub runs on every push).
 
 ---
 
@@ -313,7 +313,7 @@ abroad-application-hub/
 │   └── costs.ts, fx.ts               # Cost estimates & currency conversion
 ├── proxy.ts                          # Session refresh & /app sign-in guard
 ├── supabase/migrations/              # SQL schema, RLS policies, functions
-├── tests/                            # Vitest suite (166 tests)
+├── tests/                            # Vitest suite (176 tests)
 └── .github/workflows/ci.yml          # Typecheck, lint, tests & build on every push
 ```
 
@@ -335,11 +335,10 @@ abroad-application-hub/
 
 **Current Limitations:**
 * **JavaScript-Heavy Portals**: Web ingestion reads server-rendered HTML. For portals that load content in the browser, upload the PDF guidelines instead.
-* **Scanned PDFs**: Image-only PDFs are detected and rejected with a clear message; reading them would need OCR.
+* **Scanned PDFs**: Image-only PDFs of up to 40 pages are read with OCR (Gemini), which needs `GEMINI_API_KEY` and counts as one AI use. OCR text is machine-read, so those sources are marked "(OCR)"; check key numbers against the original. PDFs that mix text pages with scanned pages are read from their text layer only.
 * **Document Currency**: Answers reflect the documents you attach; if requirements change mid-cycle, attach the updated document.
 
 **Next Steps:**
-* OCR for scanned prospectuses and certificates.
 * Recommendation-letter tracker.
 
 ---

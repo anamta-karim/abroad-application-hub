@@ -80,7 +80,7 @@ describe("PDF extraction", () => {
     page.drawRectangle({ x: 50, y: 50, width: 495, height: 742, color: rgb(0.9, 0.9, 0.9) });
     const pdf = Buffer.from(await doc.save());
 
-    await expect(extractTextFromPdf(pdf)).rejects.toMatchObject({ code: "no_text" });
+    await expect(extractTextFromPdf(pdf)).rejects.toMatchObject({ code: "no_text", totalPages: 1 });
     await expect(extractTextFromPdf(pdf)).rejects.toBeInstanceOf(PdfExtractionError);
   });
 

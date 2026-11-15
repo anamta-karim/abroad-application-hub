@@ -365,3 +365,6 @@ export default async function ApplicationDetailPage({ params }: ApplicationDetai
     </div>
   );
 }
+
+/** Scanned PDFs can take a while to read with OCR. */
+export const maxDuration = 120;

@@ -5,7 +5,9 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { safeFetchHtml, validateUrlForSSRF } from "@/lib/ingestion/ssrf";
 import { extractCleanTextFromHtml } from "@/lib/ingestion/html";
-import { extractTextFromPdf, PdfExtractionError } from "@/lib/ingestion/pdf";
+import { extractTextFromPdf, PdfExtractionError, PDF_ERROR_MESSAGES, type PdfExtractionResult } from "@/lib/ingestion/pdf";
+import { ocrPdf, ocrTitle, OCR_MAX_PAGES, OCR_MESSAGES } from "@/lib/ingestion/ocr";
+import { isGeminiConfigured } from "@/lib/ai/gemini";
 import { chunkDocumentText, computeSha256 } from "@/lib/ingestion/chunker";
 import { extractCandidateFacts } from "@/lib/ingestion/extractor";
 import { parseFactDate } from "@/lib/ingestion/dates";
@@ -186,6 +188,25 @@ export async function ingestWebpageAction(
 }
 
 /**
+ * Reads a scanned (image-only) PDF with OCR. Needs the Gemini key, counts as
+ * one AI use, and is limited to OCR_MAX_PAGES pages.
+ */
+async function readScannedPdf(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  bytes: Uint8Array,
+  totalPages: number | undefined
+): Promise<{ result: PdfExtractionResult } | { error: string }> {
+  if (!isGeminiConfigured()) return { error: PDF_ERROR_MESSAGES.no_text };
+  if (totalPages && totalPages > OCR_MAX_PAGES) return { error: OCR_MESSAGES.tooManyPages(totalPages) };
+
+  const usage = await consumeUsage(supabase, "ai");
+  if (!usage.allowed) return { error: OCR_MESSAGES.limitReached(usage.limit) };
+
+  const result = await ocrPdf(bytes, totalPages);
+  return result ? { result } : { error: OCR_MESSAGES.failed };
+}
+
+/**
  * Ingest a private official admissions PDF brochure or requirements prospectus.
  */
 export async function ingestPdfAction(
@@ -227,17 +248,26 @@ export async function ingestPdfAction(
   const contentHash = computeSha256(buffer.toString("binary"));
   const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
 
-  // 1. Read the text first: scanned, protected or broken PDFs are rejected
-  // here with a clear message, before anything is stored.
-  let extracted: Awaited<ReturnType<typeof extractTextFromPdf>>;
+  // 1. Read the text first: protected or broken PDFs are rejected here with a
+  // clear message, before anything is stored. Scanned PDFs (no selectable
+  // text) are read with OCR instead.
+  let extracted: PdfExtractionResult;
+  let usedOcr = false;
   try {
     extracted = await extractTextFromPdf(buffer);
   } catch (err) {
-    if (err instanceof PdfExtractionError) {
+    if (err instanceof PdfExtractionError && err.code === "no_text") {
+      const scanned = await readScannedPdf(supabase, new Uint8Array(buffer), err.totalPages);
+      if ("error" in scanned) return { error: scanned.error };
+      extracted = scanned.result;
+      usedOcr = true;
+    } else if (err instanceof PdfExtractionError) {
       return { error: errorMessage(err) };
+    } else {
+      return { error: "This PDF couldn't be read. Try re-downloading it from the official site." };
     }
-    return { error: "This PDF couldn't be read. Try re-downloading it from the official site." };
   }
+  const fileTitle = file.name.replace(/\.pdf$/i, "");
 
   // 2. Insert pending source
   const { data: source, error: sourceInsertError } = await supabase
@@ -246,7 +276,7 @@ export async function ingestPdfAction(
       user_id: user.id,
       application_id: applicationId,
       source_type: "pdf",
-      display_name: file.name.replace(/\.pdf$/i, ""),
+      display_name: usedOcr ? ocrTitle(fileTitle) : fileTitle,
       file_size_bytes: file.size,
       mime_type: "application/pdf",
       ingestion_status: "processing",
@@ -283,7 +313,7 @@ export async function ingestPdfAction(
       .eq("id", source.id);
 
     const { title: extractedTitle, fullText } = extracted;
-    const docTitle = extractedTitle || file.name.replace(/\.pdf$/i, "");
+    const docTitle = usedOcr ? ocrTitle(extractedTitle || fileTitle) : extractedTitle || fileTitle;
 
     // 4. Create versioned source snapshot
     const { data: snapshot, error: snapshotError } = await supabase

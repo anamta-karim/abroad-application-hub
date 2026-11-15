@@ -27,7 +27,12 @@ export interface PdfExtractionResult {
 export type PdfErrorCode = "not_pdf" | "encrypted" | "no_text" | "unreadable";
 
 export class PdfExtractionError extends Error {
-  constructor(public code: PdfErrorCode, message: string) {
+  constructor(
+    public code: PdfErrorCode,
+    message: string,
+    /** Page count, when the file could be opened (used to decide whether OCR is feasible). */
+    public totalPages?: number
+  ) {
     super(message);
     this.name = "PdfExtractionError";
   }
@@ -191,7 +196,7 @@ export async function extractTextFromPdf(pdfBuffer: Buffer | Uint8Array): Promis
 
   const textChars = pages.reduce((n, p) => n + p.text.replace(/\s/g, "").length, 0);
   if (textChars < MIN_TEXT_CHARS) {
-    throw new PdfExtractionError("no_text", PDF_ERROR_MESSAGES.no_text);
+    throw new PdfExtractionError("no_text", PDF_ERROR_MESSAGES.no_text, totalPages);
   }
 
   let title: string | null = null;

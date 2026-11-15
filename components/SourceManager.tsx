@@ -3,6 +3,7 @@
 import { useState, useActionState } from "react";
 import { runAction } from "@/lib/client/runAction";
 import { InlineError } from "@/components/InlineError";
+import { OCR_MAX_PAGES } from "@/lib/ingestion/ocrLimits";
 import {
   ingestWebpageAction,
   ingestPdfAction,
@@ -154,9 +155,14 @@ export function SourceManager({ applicationId, sources }: SourceManagerProps) {
               disabled={isPdfPending}
               className="w-full sm:w-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-brand to-brand-dark rounded-xl shadow-sm hover:from-brand-hover hover:to-brand disabled:opacity-50 flex-shrink-0"
             >
-              {isPdfPending ? "Extracting..." : "Upload & Parse"}
+              {isPdfPending ? "Reading PDF…" : "Upload & Parse"}
             </button>
           </div>
+          <p className="text-[11px] text-ink-subtle" aria-live="polite">
+            {isPdfPending
+              ? "Scanned PDFs are read with OCR, which can take up to a minute."
+              : `Scanned PDFs (up to ${OCR_MAX_PAGES} pages) are read with OCR; their citations are marked "(OCR)".`}
+          </p>
         </form>
       )}
 
