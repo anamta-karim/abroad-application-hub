@@ -1,4 +1,4 @@
-import { getDocumentProxy, extractTextItems, getMeta } from "unpdf";
+import { getDocumentProxy, extractTextItems, getMeta, getResolvedPDFJS } from "unpdf";
 import { errorName } from "@/lib/errors";
 
 /**
@@ -22,6 +22,11 @@ export interface PdfExtractionResult {
   /** Pages joined with "--- Page N ---" markers, each on its own paragraph. */
   fullText: string;
   totalPages: number;
+  /**
+   * Pages with (almost) no selectable text that draw an image: scanned pages
+   * inside an otherwise text-based PDF. Candidates for OCR.
+   */
+  imagePages?: number[];
 }
 
 export type PdfErrorCode = "not_pdf" | "encrypted" | "no_text" | "unreadable";
@@ -48,6 +53,41 @@ export const PDF_ERROR_MESSAGES: Record<PdfErrorCode, string> = {
 
 /** Minimum characters of real text before we accept a document. */
 const MIN_TEXT_CHARS = 40;
+/** A page with less text than this that draws an image is treated as scanned. */
+export const MIN_PAGE_TEXT_CHARS = 30;
+
+type PdfDocument = Awaited<ReturnType<typeof getDocumentProxy>>;
+
+/** pdf.js operators that paint an image. */
+let imageOps: Set<number> | null = null;
+async function getImageOps(): Promise<Set<number>> {
+  if (!imageOps) {
+    const { OPS } = await getResolvedPDFJS();
+    imageOps = new Set(
+      [OPS.paintImageXObject, OPS.paintInlineImageXObject, OPS.paintImageMaskXObject, OPS.paintImageXObjectRepeat].filter(
+        (op): op is number => typeof op === "number"
+      )
+    );
+  }
+  return imageOps;
+}
+
+/** Of the given pages, those that draw at least one image. */
+async function pagesWithImages(pdf: PdfDocument, pageNumbers: number[]): Promise<number[]> {
+  if (pageNumbers.length === 0) return [];
+  const ops = await getImageOps();
+  const found: number[] = [];
+  for (const n of pageNumbers) {
+    try {
+      const page = await pdf.getPage(n);
+      const list = await page.getOperatorList();
+      if (list.fnArray.some((fn: number) => ops.has(fn))) found.push(n);
+    } catch {
+      // A page we can't inspect is simply not OCR'd
+    }
+  }
+  return found;
+}
 
 export interface TextItem {
   str: string;
@@ -190,9 +230,8 @@ export async function extractTextFromPdf(pdfBuffer: Buffer | Uint8Array): Promis
     throw new PdfExtractionError("unreadable", PDF_ERROR_MESSAGES.unreadable);
   }
 
-  const pages: ExtractedPage[] = pageItems
-    .map((items, i) => ({ pageNumber: i + 1, text: layoutPageText(items) }))
-    .filter((p) => p.text.trim().length > 0);
+  const allPages: ExtractedPage[] = pageItems.map((items, i) => ({ pageNumber: i + 1, text: layoutPageText(items) }));
+  const pages = allPages.filter((p) => p.text.trim().length > 0);
 
   const textChars = pages.reduce((n, p) => n + p.text.replace(/\s/g, "").length, 0);
   if (textChars < MIN_TEXT_CHARS) {
@@ -212,9 +251,13 @@ export async function extractTextFromPdf(pdfBuffer: Buffer | Uint8Array): Promis
     title = cleanTitle(firstHeading) || cleanTitle(firstLine) || "Official PDF Document";
   }
 
+  // Scanned pages inside a text PDF: little or no text, but an image
+  const nearlyEmpty = allPages.filter((p) => p.text.replace(/\s/g, "").length < MIN_PAGE_TEXT_CHARS).map((p) => p.pageNumber);
+  const imagePages = await pagesWithImages(pdf, nearlyEmpty);
+
   // Each marker is its own paragraph so the chunker records the page without
   // swallowing that page's first paragraph.
   const fullText = pages.map((p) => `--- Page ${p.pageNumber} ---\n\n${p.text}`).join("\n\n");
 
-  return { title, pages, fullText, totalPages };
+  return { title, pages, fullText, totalPages, imagePages };
 }

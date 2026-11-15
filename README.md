@@ -8,10 +8,10 @@
 ![React](https://img.shields.io/badge/React-19-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6.svg)
 ![Supabase](https://img.shields.io/badge/backend-Supabase_PostgreSQL-3ECF8E.svg)
-![Tests](https://img.shields.io/badge/tests-vitest_196_passed-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-vitest_203_passed-brightgreen.svg)
 ![Design](https://img.shields.io/badge/design-Cool_Blue_Glassmorphism-60A5FA.svg)
 
-[🚀 **Visit Live App**](https://abroad-application-hub.vercel.app)  ·  [Getting started](#getting-started)  ·  [How it works](#how-it-works)  ·  [Honest by design](#honest-by-design)
+[🚀 **Visit Live App**](https://abroad-atlas.vercel.app)  ·  [Getting started](#getting-started)  ·  [How it works](#how-it-works)  ·  [Honest by design](#honest-by-design)
 
 </div>
 
@@ -66,7 +66,7 @@ When a requirement is missing from your document, it says so openly instead of m
 | ✅ **Eligibility Check** | Add your GPA, test scores, work experience and degree once | Every application checked against the requirements stated in its own sources (GPA, IELTS/TOEFL/PTE/Duolingo, GRE/GMAT, experience, prior degree), each with its quote and page; English tests count as alternatives |
 | ✉️ **Recommendation Letters** | Add your referees and attach them to each application | Each letter tracked from *not asked* to *submitted*, with the number of letters the program asks for (quoted from its sources), when to ask (3–4 weeks' notice), follow-up and reminder prompts on the dashboard, and ready-made emails to ask, follow up, remind and thank, sent from your own mail app |
 | 🗂️ **Document Checklist** | Tick the common documents you already have | Each application's checklist matched against them: what's covered, what's still needed, what expires before the deadline, and what's specific to that application |
-| 📄 **Official Source Ingestion** | Paste an admissions link or upload a prospectus PDF | Text extracted with page numbers and section titles (scanned PDFs are read with OCR); suggested deadlines and required documents for you to confirm |
+| 📄 **Official Source Ingestion** | Paste an admissions link or upload a prospectus PDF | Text extracted with page numbers and section titles (scanned PDFs, and scanned pages inside text PDFs, are read with OCR); suggested deadlines and required documents for you to confirm |
 | 💬 **Grounded Q&A** | Ask *"What IELTS score is required?"* | An answer quoted from your sources with the page number, or an honest "not found" |
 | 📝 **Application-Specific Blueprints** | Click **SOP**, **Interview**, **LOR** or **Study Plan** | A plan built from that application's own requirements: quoted limits and rules, a tailored structure, a timeline counted back from its deadline, and a list of what the sources don't say |
 | 🧪 **Sample Application** | Click **Try a sample application** on an empty dashboard | A fictional program with a source, suggested facts, a checklist, tasks and costs, so every feature can be explored before adding real data |
@@ -248,7 +248,7 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser!
 ```bash
 npm test
 ```
-All 196 tests run locally (the same checks GitHub runs on every push).
+All 203 tests run locally (the same checks GitHub runs on every push).
 
 ---
 
@@ -316,7 +316,7 @@ abroad-application-hub/
 │   └── costs.ts, fx.ts               # Cost estimates & currency conversion
 ├── proxy.ts                          # Session refresh & /app sign-in guard
 ├── supabase/migrations/              # SQL schema, RLS policies, functions
-├── tests/                            # Vitest suite (196 tests)
+├── tests/                            # Vitest suite (203 tests)
 └── .github/workflows/ci.yml          # Typecheck, lint, tests & build on every push
 ```
 
@@ -338,11 +338,11 @@ abroad-application-hub/
 
 **Current Limitations:**
 * **JavaScript-Heavy Portals**: Web ingestion reads server-rendered HTML. For portals that load content in the browser, upload the PDF guidelines instead.
-* **Scanned PDFs**: Image-only PDFs of up to 40 pages are read with OCR (Gemini), which needs `GEMINI_API_KEY` and counts as one AI use. OCR text is machine-read, so those sources are marked "(OCR)"; check key numbers against the original. PDFs that mix text pages with scanned pages are read from their text layer only.
+* **Scanned PDFs**: Image-only PDFs of up to 40 pages are read with OCR (Gemini), which needs `GEMINI_API_KEY` and counts as one AI use. In PDFs that mix text and scanned pages, the scanned pages (up to 40) are read with OCR too, for one AI use; if OCR isn't available, the text pages still load. OCR text is machine-read, so those sources are marked "(OCR)" or "(OCR p. 3–4)"; check key numbers against the original.
 * **Document Currency**: Answers reflect the documents you attach; if requirements change mid-cycle, attach the updated document.
 
 **Next Steps:**
-* OCR for the scanned pages of PDFs that mix text and scanned pages.
+* Nothing planned right now. Suggestions are welcome through the in-app feedback button.
 
 ---
 

@@ -5,8 +5,14 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { safeFetchHtml, validateUrlForSSRF } from "@/lib/ingestion/ssrf";
 import { extractCleanTextFromHtml } from "@/lib/ingestion/html";
-import { extractTextFromPdf, PdfExtractionError, PDF_ERROR_MESSAGES, type PdfExtractionResult } from "@/lib/ingestion/pdf";
-import { ocrPdf, ocrTitle, OCR_MAX_PAGES, OCR_MESSAGES } from "@/lib/ingestion/ocr";
+import {
+  extractTextFromPdf,
+  PdfExtractionError,
+  PDF_ERROR_MESSAGES,
+  type ExtractedPage,
+  type PdfExtractionResult,
+} from "@/lib/ingestion/pdf";
+import { mergeOcrPages, ocrPages, ocrPdf, ocrTitle, OCR_MAX_PAGES, OCR_MESSAGES } from "@/lib/ingestion/ocr";
 import { isGeminiConfigured } from "@/lib/ai/gemini";
 import { chunkDocumentText, computeSha256 } from "@/lib/ingestion/chunker";
 import { extractCandidateFacts } from "@/lib/ingestion/extractor";
@@ -207,6 +213,21 @@ async function readScannedPdf(
 }
 
 /**
+ * Reads the scanned pages inside a text PDF with OCR (one AI use). Best
+ * effort: returns [] when OCR isn't available, so the text pages still load.
+ */
+async function readScannedPages(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  bytes: Uint8Array,
+  pageNumbers: number[]
+): Promise<ExtractedPage[]> {
+  if (!isGeminiConfigured()) return [];
+  const usage = await consumeUsage(supabase, "ai");
+  if (!usage.allowed) return [];
+  return (await ocrPages(bytes, pageNumbers)) ?? [];
+}
+
+/**
  * Ingest a private official admissions PDF brochure or requirements prospectus.
  */
 export async function ingestPdfAction(
@@ -253,8 +274,19 @@ export async function ingestPdfAction(
   // text) are read with OCR instead.
   let extracted: PdfExtractionResult;
   let usedOcr = false;
+  let ocrPageNumbers: number[] = [];
   try {
     extracted = await extractTextFromPdf(buffer);
+    // Scanned pages inside a text PDF: read them with OCR too, if possible.
+    // If not (no key, limit reached, OCR failed), the text pages still work.
+    const scannedPages = (extracted.imagePages ?? []).slice(0, OCR_MAX_PAGES);
+    if (scannedPages.length > 0) {
+      const ocrd = await readScannedPages(supabase, new Uint8Array(buffer), scannedPages);
+      if (ocrd.length > 0) {
+        extracted = mergeOcrPages(extracted, ocrd);
+        ocrPageNumbers = ocrd.map((p) => p.pageNumber);
+      }
+    }
   } catch (err) {
     if (err instanceof PdfExtractionError && err.code === "no_text") {
       const scanned = await readScannedPdf(supabase, new Uint8Array(buffer), err.totalPages);
@@ -276,7 +308,11 @@ export async function ingestPdfAction(
       user_id: user.id,
       application_id: applicationId,
       source_type: "pdf",
-      display_name: usedOcr ? ocrTitle(fileTitle) : fileTitle,
+      display_name: usedOcr
+        ? ocrTitle(fileTitle)
+        : ocrPageNumbers.length > 0
+        ? ocrTitle(fileTitle, ocrPageNumbers)
+        : fileTitle,
       file_size_bytes: file.size,
       mime_type: "application/pdf",
       ingestion_status: "processing",
@@ -313,7 +349,11 @@ export async function ingestPdfAction(
       .eq("id", source.id);
 
     const { title: extractedTitle, fullText } = extracted;
-    const docTitle = usedOcr ? ocrTitle(extractedTitle || fileTitle) : extractedTitle || fileTitle;
+    const docTitle = usedOcr
+      ? ocrTitle(extractedTitle || fileTitle)
+      : ocrPageNumbers.length > 0
+      ? ocrTitle(extractedTitle || fileTitle, ocrPageNumbers)
+      : extractedTitle || fileTitle;
 
     // 4. Create versioned source snapshot
     const { data: snapshot, error: snapshotError } = await supabase
