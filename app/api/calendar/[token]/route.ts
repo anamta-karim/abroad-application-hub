@@ -11,7 +11,7 @@ import { buildIcs, type FeedEvent, type FeedEventKind } from "@/lib/ics";
  */
 
 const TOKEN_RE = /^[A-Za-z0-9_-]{32,64}$/;
-const KINDS = new Set<FeedEventKind>(["deadline", "task", "document", "opening"]);
+const KINDS = new Set<FeedEventKind>(["deadline", "task", "document", "letter", "letter_ask", "opening"]);
 
 interface FeedRow {
   kind: string;
@@ -64,7 +64,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       date: r.event_date,
       title: r.title,
       detail: r.detail,
-      url: r.application_id ? `${origin}/app/applications/${r.application_id}` : `${origin}/app`,
+      url: r.application_id
+        ? `${origin}/app/applications/${r.application_id}${r.kind.startsWith("letter") ? "#letters-heading" : ""}`
+        : `${origin}/app`,
     }));
 
   const ics = buildIcs(events, { calendarName: "AbroadAtlas deadlines", host: new URL(origin).hostname });

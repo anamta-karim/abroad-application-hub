@@ -3,7 +3,7 @@
  * All events are all-day; lines are CRLF-terminated and folded at 75 octets.
  */
 
-export type FeedEventKind = "deadline" | "task" | "document" | "opening";
+export type FeedEventKind = "deadline" | "task" | "document" | "letter" | "letter_ask" | "opening";
 
 export interface FeedEvent {
   kind: FeedEventKind;
@@ -18,6 +18,8 @@ const KIND_PREFIX: Record<FeedEventKind, string> = {
   deadline: "Deadline",
   task: "Task due",
   document: "Document due",
+  letter: "Letter due",
+  letter_ask: "Ask for a letter",
   opening: "Expected to open",
 };
 
@@ -26,6 +28,8 @@ const KIND_ALARMS: Record<FeedEventKind, number[]> = {
   deadline: [7, 1],
   task: [1],
   document: [1],
+  letter: [3, 1],
+  letter_ask: [0],
   opening: [0],
 };
 

@@ -60,3 +60,26 @@ describe("iCalendar feed", () => {
     expect(folded.replace(/\r\n /g, "")).toBe(long);
   });
 });
+
+describe("Recommendation letters in the feed", () => {
+  const ics = buildIcs(
+    [
+      { kind: "letter", itemId: "l1", date: "2027-01-15", title: "Prof. Rao", detail: "MSc Data Science", url: null },
+      { kind: "letter_ask", itemId: "l1", date: "2026-12-18", title: "Prof. Rao", detail: "MSc Data Science", url: null },
+    ],
+    { calendarName: "My deadlines", now: new Date("2026-11-14T10:00:00Z"), host: "example.com" }
+  );
+  const lines = ics.split("\r\n");
+
+  it("names each event and keeps the two dates of one letter apart", () => {
+    expect(lines).toContain("SUMMARY:Letter due: Prof. Rao");
+    expect(lines).toContain("SUMMARY:Ask for a letter: Prof. Rao");
+    expect(lines).toContain("UID:letter-l1@example.com");
+    expect(lines).toContain("UID:letter_ask-l1@example.com");
+  });
+
+  it("alerts 3 days and 1 day before a letter is due, and on the ask-by day", () => {
+    const triggers = lines.filter((l) => l.startsWith("TRIGGER:"));
+    expect(triggers).toEqual(["TRIGGER:-P2DT15H", "TRIGGER:-PT15H", "TRIGGER:PT9H"]);
+  });
+});

@@ -48,7 +48,7 @@ export function CalendarFeedSettings({ initialToken, origin, migrationMissing }:
     <div className="space-y-4">
       <p className="text-xs text-ink-muted leading-relaxed">
         Subscribe once in Google Calendar, Apple Calendar or Outlook, and your application deadlines, task and
-        document due dates, and expected openings appear there and update automatically (usually within a few
+        document due dates, recommendation letters (when to ask and when they&apos;re due), and expected openings appear there and update automatically (usually within a few
         hours). Apple Calendar and Outlook also remind you 7 days and 1 day before each deadline.
       </p>
 

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   addDays,
   letterAdvice,
+  letterCalendarDates,
   letterCountsIn,
   letterEmailDraft,
   letterNudge,
@@ -215,5 +216,19 @@ describe("Letters elsewhere in the app", () => {
     const done = coverageFor(reqs, [], null, today, { submitted: 2, target: 2, text: "2 of 2 letters submitted" });
     expect(done[0].state).toBe("have");
     expect(coverageFor(reqs, [], null, today)[0].note).toBeUndefined();
+  });
+});
+
+describe("Letter dates on the calendar", () => {
+  it("shows the due date, and an ask-by date four weeks earlier until asked", () => {
+    expect(letterCalendarDates({ status: "to_ask", asked_on: null, due_on: null }, "2027-01-15")).toEqual([
+      { kind: "letter", date: "2027-01-15" },
+      { kind: "letter_ask", date: "2026-12-18" },
+    ]);
+    expect(letterCalendarDates({ status: "agreed", asked_on: "2026-11-01", due_on: "2026-12-01" }, "2027-01-15")).toEqual([
+      { kind: "letter", date: "2026-12-01" },
+    ]);
+    expect(letterCalendarDates({ status: "submitted", asked_on: null, due_on: "2026-12-01" }, null)).toEqual([]);
+    expect(letterCalendarDates({ status: "asked", asked_on: null, due_on: null }, null)).toEqual([]);
   });
 });

@@ -13,8 +13,9 @@ import {
   daysBetween,
   WEEKDAY_LABELS,
 } from "@/lib/calendar";
+import { letterCalendarDates } from "@/lib/recommendations";
 
-type EventKind = "deadline" | "task" | "document" | "opening";
+type EventKind = "deadline" | "task" | "document" | "letter" | "letter_ask" | "opening";
 
 interface CalendarEvent {
   date: string;
@@ -28,6 +29,8 @@ const KIND_STYLES: Record<EventKind, { label: string; chip: string; dot: string 
   deadline: { label: "Application deadline", chip: "bg-blue-100 text-blue-900 border-blue-200", dot: "bg-blue-600" },
   task: { label: "Task due", chip: "bg-amber-100 text-amber-900 border-amber-200", dot: "bg-amber-500" },
   document: { label: "Document due", chip: "bg-violet-100 text-violet-900 border-violet-200", dot: "bg-violet-500" },
+  letter: { label: "Letter due", chip: "bg-rose-100 text-rose-900 border-rose-200", dot: "bg-rose-500" },
+  letter_ask: { label: "Ask for a letter", chip: "bg-pink-50 text-pink-900 border-pink-200", dot: "bg-pink-400" },
   opening: { label: "Expected opening", chip: "bg-teal-100 text-teal-900 border-teal-200", dot: "bg-teal-500" },
 };
 
@@ -46,7 +49,7 @@ export default async function DeadlinesPage({ searchParams }: PageProps) {
   const { from, to } = gridRange(weeks);
 
   const supabase = await createClient();
-  const [{ data: apps }, { data: tasks }, { data: docs }, { data: reminders }, { data: nextApps }] = await Promise.all([
+  const [{ data: apps }, { data: tasks }, { data: docs }, { data: reminders }, { data: nextApps }, { data: letters }] = await Promise.all([
     supabase
       .from("applications")
       .select("id, title, institution_or_provider, deadline, status")
@@ -78,6 +81,11 @@ export default async function DeadlinesPage({ searchParams }: PageProps) {
       .gte("deadline", today)
       .order("deadline", { ascending: true })
       .limit(1),
+    // Open recommendation letters; their dates depend on the application deadline, so filter after
+    supabase
+      .from("recommendation_requests")
+      .select("id, status, asked_on, due_on, application_id, recommender:recommender_id (name), application:application_id (title, deadline, status, archived_at)")
+      .in("status", ["to_ask", "asked", "agreed"]),
   ]);
 
   const events: CalendarEvent[] = [
@@ -102,6 +110,19 @@ export default async function DeadlinesPage({ searchParams }: PageProps) {
       subtitle: d.applications?.title ?? null,
       href: `/app/applications/${d.application_id}`,
     })),
+    ...(letters || []).flatMap((l) => {
+      const app = l.application;
+      if (!app || app.archived_at || app.status === "rejected" || app.status === "withdrawn") return [];
+      return letterCalendarDates(l, app.deadline)
+        .filter((d) => d.date >= from && d.date <= to)
+        .map((d) => ({
+          date: d.date,
+          kind: d.kind,
+          title: l.recommender?.name ?? "Referee",
+          subtitle: app.title,
+          href: `/app/applications/${l.application_id}#letters-heading`,
+        }));
+    }),
     ...(reminders || []).map((r) => ({
       date: r.expected_open_date as string,
       kind: "opening" as const,

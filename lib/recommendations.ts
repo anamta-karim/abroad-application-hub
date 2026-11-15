@@ -265,6 +265,23 @@ export function letterNudge(
   return null;
 }
 
+// ── Calendar dates (Deadlines page; the calendar feed's SQL follows the same rules) ──
+
+export interface LetterCalendarDate {
+  kind: "letter" | "letter_ask";
+  date: string;
+}
+
+/** An open letter's due date, plus an "ask by" date four weeks earlier if not asked yet. */
+export function letterCalendarDates(letter: LetterTiming, appDeadline: string | null): LetterCalendarDate[] {
+  if (!OPEN_LETTER_STATUSES.has(letter.status)) return [];
+  const due = letterDueDate(letter, appDeadline);
+  if (!due) return [];
+  const dates: LetterCalendarDate[] = [{ kind: "letter", date: due }];
+  if (letter.status === "to_ask") dates.push({ kind: "letter_ask", date: addDays(due, -ASK_NOTICE_DAYS) });
+  return dates;
+}
+
 // ── Email drafts (opened in the user's own mail app) ──
 
 export interface EmailDraft {

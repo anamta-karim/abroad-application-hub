@@ -8,7 +8,7 @@
 ![React](https://img.shields.io/badge/React-19-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6.svg)
 ![Supabase](https://img.shields.io/badge/backend-Supabase_PostgreSQL-3ECF8E.svg)
-![Tests](https://img.shields.io/badge/tests-vitest_193_passed-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-vitest_196_passed-brightgreen.svg)
 ![Design](https://img.shields.io/badge/design-Cool_Blue_Glassmorphism-60A5FA.svg)
 
 [🚀 **Visit Live App**](https://abroad-application-hub.vercel.app)  ·  [Getting started](#getting-started)  ·  [How it works](#how-it-works)  ·  [Honest by design](#honest-by-design)
@@ -60,7 +60,7 @@ When a requirement is missing from your document, it says so openly instead of m
 | ⚡ **URL Auto-Fill** | Paste an admissions link | Title, provider, country, degree level, deadline and funding notes filled in for you |
 | 🎯 **Application Tracker** | Add a program or scholarship | Status tracking, deadline countdowns, archive of past-due items, and an **Opening Watchlist** for intakes that haven't opened |
 | 🗓️ **This Week & Calendar** | Open the dashboard or Deadlines page | A ranked list of what needs attention now, and a month calendar of deadlines, due dates and expected openings |
-| 📅 **Calendar Sync** | Create a private link in Settings | Your deadlines in Google Calendar, Apple Calendar or Outlook, updated automatically, with alerts 7 days and 1 day before |
+| 📅 **Calendar Sync** | Create a private link in Settings | Your deadlines, due dates and recommendation-letter dates (due, and when to ask) in Google Calendar, Apple Calendar or Outlook, updated automatically, with alerts before each |
 | ✉️ **Email Reminders** | Turn on **Email me reminders** in Settings | One email a day, only when something is due: deadlines 14/7/3/1 days before and on the day, tasks and documents due tomorrow or today, recommendation letters (time to ask, follow-ups, due dates), and watchlist openings; each reminder is sent once |
 | 💰 **Costs & Compare** | Enter tuition, living costs, fees and funding | Net cost per application, and a side-by-side comparison of up to 4 applications in one currency (ECB exchange rates) |
 | ✅ **Eligibility Check** | Add your GPA, test scores, work experience and degree once | Every application checked against the requirements stated in its own sources (GPA, IELTS/TOEFL/PTE/Duolingo, GRE/GMAT, experience, prior degree), each with its quote and page; English tests count as alternatives |
@@ -236,6 +236,7 @@ In your Supabase project dashboard, click **SQL Editor** &rarr; **New query**, a
 7. [`20261117000000_usage_limits_and_feedback.sql`](supabase/migrations/20261117000000_usage_limits_and_feedback.sql): daily usage limits and the feedback inbox
 8. [`20261118000000_academic_profiles.sql`](supabase/migrations/20261118000000_academic_profiles.sql): academic profile for eligibility checks
 9. [`20261119000000_recommendation_letters.sql`](supabase/migrations/20261119000000_recommendation_letters.sql): referees and recommendation letters
+10. [`20261120000000_calendar_feed_letters.sql`](supabase/migrations/20261120000000_calendar_feed_letters.sql): recommendation letters in the calendar feed
 
 ### Step 5: Start the app
 ```bash
@@ -247,7 +248,7 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser!
 ```bash
 npm test
 ```
-All 193 tests run locally (the same checks GitHub runs on every push).
+All 196 tests run locally (the same checks GitHub runs on every push).
 
 ---
 
@@ -315,7 +316,7 @@ abroad-application-hub/
 │   └── costs.ts, fx.ts               # Cost estimates & currency conversion
 ├── proxy.ts                          # Session refresh & /app sign-in guard
 ├── supabase/migrations/              # SQL schema, RLS policies, functions
-├── tests/                            # Vitest suite (193 tests)
+├── tests/                            # Vitest suite (196 tests)
 └── .github/workflows/ci.yml          # Typecheck, lint, tests & build on every push
 ```
 
@@ -341,7 +342,7 @@ abroad-application-hub/
 * **Document Currency**: Answers reflect the documents you attach; if requirements change mid-cycle, attach the updated document.
 
 **Next Steps:**
-* Letter due dates in the calendar feed (they're on the dashboard and in email reminders today).
+* OCR for the scanned pages of PDFs that mix text and scanned pages.
 
 ---
 
