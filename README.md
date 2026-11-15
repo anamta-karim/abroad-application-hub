@@ -8,7 +8,7 @@
 ![React](https://img.shields.io/badge/React-19-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6.svg)
 ![Supabase](https://img.shields.io/badge/backend-Supabase_PostgreSQL-3ECF8E.svg)
-![Tests](https://img.shields.io/badge/tests-vitest_203_passed-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-vitest_210_passed-brightgreen.svg)
 ![Design](https://img.shields.io/badge/design-Cool_Blue_Glassmorphism-60A5FA.svg)
 
 [🚀 **Visit Live App**](https://abroad-atlas.vercel.app)  ·  [Getting started](#getting-started)  ·  [How it works](#how-it-works)  ·  [Honest by design](#honest-by-design)
@@ -62,7 +62,7 @@ When a requirement is missing from your document, it says so openly instead of m
 | 🗓️ **This Week & Calendar** | Open the dashboard or Deadlines page | A ranked list of what needs attention now, and a month calendar of deadlines, due dates and expected openings |
 | 📅 **Calendar Sync** | Create a private link in Settings | Your deadlines, due dates and recommendation-letter dates (due, and when to ask) in Google Calendar, Apple Calendar or Outlook, updated automatically, with alerts before each |
 | ✉️ **Email Reminders** | Turn on **Email me reminders** in Settings | One email a day, only when something is due: deadlines 14/7/3/1 days before and on the day, tasks and documents due tomorrow or today, recommendation letters (time to ask, follow-ups, due dates), and watchlist openings; each reminder is sent once |
-| 💰 **Costs & Compare** | Enter tuition, living costs, fees and funding | Net cost per application, and a side-by-side comparison of up to 4 applications in one currency (ECB exchange rates) |
+| 💰 **Costs & Compare** | Enter tuition, living costs, fees and funding | Net cost per application, and a side-by-side comparison of up to 4 applications in one currency (ECB exchange rates) that lists what each one is still missing and fills gaps with confirmed funding from your sources or the usual window and funding from Discover |
 | ✅ **Eligibility Check** | Add your GPA, test scores, work experience and degree once | Every application checked against the requirements stated in its own sources (GPA, IELTS/TOEFL/PTE/Duolingo, GRE/GMAT, experience, prior degree), each with its quote and page; English tests count as alternatives |
 | ✉️ **Recommendation Letters** | Add your referees and attach them to each application | Each letter tracked from *not asked* to *submitted*, with the number of letters the program asks for (quoted from its sources), when to ask (3–4 weeks' notice), follow-up and reminder prompts on the dashboard, and ready-made emails to ask, follow up, remind and thank, sent from your own mail app |
 | 🗂️ **Document Checklist** | Tick the common documents you already have | Each application's checklist matched against them: what's covered, what's still needed, what expires before the deadline, and what's specific to that application |
@@ -248,7 +248,7 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser!
 ```bash
 npm test
 ```
-All 203 tests run locally (the same checks GitHub runs on every push).
+All 210 tests run locally (the same checks GitHub runs on every push).
 
 ---
 
@@ -316,7 +316,7 @@ abroad-application-hub/
 │   └── costs.ts, fx.ts               # Cost estimates & currency conversion
 ├── proxy.ts                          # Session refresh & /app sign-in guard
 ├── supabase/migrations/              # SQL schema, RLS policies, functions
-├── tests/                            # Vitest suite (203 tests)
+├── tests/                            # Vitest suite (210 tests)
 └── .github/workflows/ci.yml          # Typecheck, lint, tests & build on every push
 ```
 

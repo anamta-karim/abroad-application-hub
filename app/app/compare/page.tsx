@@ -6,6 +6,7 @@ import { loadAcademicProfile, loadEligibilityRequirements } from "@/lib/eligibil
 import { computeCostSummary, costInputsFromRow, formatMoney, type CostSummary } from "@/lib/costs";
 import { getRates, convertToBase, SUPPORTED_CURRENCIES, SUPPORTED_CURRENCY_CODES } from "@/lib/fx";
 import { countdownLabel, daysBetween, formatDateLabel, todayString } from "@/lib/calendar";
+import { catalogEntryFor, confirmedFunding, missingDetails, rowHasAnyValue, type MissingItem } from "@/lib/compare";
 
 const MAX_COMPARE = 4;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -47,6 +48,13 @@ interface Column {
   openTasks: number;
   /** Eligibility verdict, or null when there's no profile or nothing to check. */
   eligibility: { label: string; tone: "good" | "bad" | "neutral" } | null;
+  /** The sources state requirements, but there's no academic profile to check them against. */
+  eligibilityNeedsScores: boolean;
+  /** Usual application window, from the Discover catalog (shown when there's no deadline). */
+  typicalWindow: string | null;
+  /** Funding in words: a confirmed fact from the sources, else the catalog's typical funding. */
+  funding: { text: string; from: "source" | "catalog" } | null;
+  missing: MissingItem[];
 }
 
 export default async function ComparePage({ searchParams }: PageProps) {
@@ -83,13 +91,21 @@ export default async function ComparePage({ searchParams }: PageProps) {
     const ids = selected.map((a) => a.id);
     const needsFx = selected.some((a) => a.cost_currency && a.cost_currency !== displayCurrency);
 
-    const [{ data: reqs }, { data: tasks }, fx, { profile }, eligibilityReqs] = await Promise.all([
-      supabase.from("document_requirements").select("application_id, status").in("application_id", ids),
-      supabase.from("tasks").select("application_id, status").in("application_id", ids),
-      needsFx ? getRates(displayCurrency) : Promise.resolve(null),
-      loadAcademicProfile(supabase),
-      loadEligibilityRequirements(supabase, ids),
-    ]);
+    const [{ data: reqs }, { data: tasks }, fx, { profile }, eligibilityReqs, { data: sourceRows }, { data: fundingFacts }] =
+      await Promise.all([
+        supabase.from("document_requirements").select("application_id, status").in("application_id", ids),
+        supabase.from("tasks").select("application_id, status").in("application_id", ids),
+        needsFx ? getRates(displayCurrency) : Promise.resolve(null),
+        loadAcademicProfile(supabase),
+        loadEligibilityRequirements(supabase, ids),
+        supabase.from("sources").select("application_id").in("application_id", ids),
+        supabase
+          .from("extracted_facts")
+          .select("application_id, fact_type, review_state, value, created_at")
+          .in("application_id", ids)
+          .eq("fact_type", "funding")
+          .in("review_state", ["confirmed", "edited"]),
+      ]);
     if (needsFx && !fx) fxFailed = true;
     fxDate = fx?.date ?? null;
 
@@ -101,6 +117,9 @@ export default async function ComparePage({ searchParams }: PageProps) {
         n === null ? null : from === displayCurrency ? n : convertToBase(n, from, fx);
       const canConvert = !cost.hasAny || from === displayCurrency || conv(1) !== null;
       const appReqs = (reqs || []).filter((r) => r.application_id === app.id && r.status !== "not_applicable");
+      const catalog = catalogEntryFor(app);
+      const sourceFunding = confirmedFunding((fundingFacts || []).filter((f) => f.application_id === app.id));
+      const eligibilityFound = (eligibilityReqs.get(app.id) ?? []).length > 0;
       return {
         app,
         cost,
@@ -120,6 +139,22 @@ export default async function ComparePage({ searchParams }: PageProps) {
           const result = matchEligibility(eligibilityReqs.get(app.id) ?? [], profile);
           return result.total > 0 && !profileIsEmpty(profile) ? eligibilitySummary(result) : null;
         })(),
+        eligibilityNeedsScores: eligibilityFound && profileIsEmpty(profile),
+        typicalWindow: catalog?.typicalWindow ?? null,
+        funding: sourceFunding
+          ? { text: sourceFunding, from: "source" }
+          : catalog
+          ? { text: catalog.funding, from: "catalog" }
+          : null,
+        missing: missingDetails({
+          recordType: app.record_type,
+          deadline: app.deadline,
+          intake: app.study_period,
+          hasCosts: cost.hasAny,
+          hasFundingAmount: inputs.fundingPerYear !== null,
+          checklistItems: appReqs.length,
+          sources: (sourceRows || []).filter((s) => s.application_id === app.id).length,
+        }),
       };
     });
   }
@@ -259,7 +294,23 @@ export default async function ComparePage({ searchParams }: PageProps) {
                       <span className="block text-xs font-normal text-ink-muted mt-0.5">
                         {c.app.institution_or_provider || "—"}
                       </span>
-                      <Link href={withoutId(c.app.id)} className="inline-block mt-2 text-[11px] font-semibold text-ink-subtle hover:text-red-600">
+                      {c.missing.length > 0 && (
+                        <span className="block mt-2 text-[11px] font-normal text-amber-900">
+                          Still to add:{" "}
+                          {c.missing.map((m, i) => (
+                            <span key={m.kind}>
+                              {i > 0 && ", "}
+                              <Link
+                                href={m.where === "edit" ? `/app/applications/${c.app.id}/edit` : `/app/applications/${c.app.id}`}
+                                className="font-semibold underline decoration-amber-300 underline-offset-2 hover:text-brand"
+                              >
+                                {m.label}
+                              </Link>
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                      <Link href={withoutId(c.app.id)} className="block mt-2 text-[11px] font-semibold text-ink-subtle hover:text-red-600">
                         Remove
                       </Link>
                     </th>
@@ -272,6 +323,19 @@ export default async function ComparePage({ searchParams }: PageProps) {
                 <Row label="Degree" values={columns.map((c) => c.app.degree_level)} />
                 <Row label="Intake" values={columns.map((c) => c.app.study_period)} />
                 <Row label="Status" values={columns.map((c) => STATUS_LABELS[c.app.status] || c.app.status)} />
+                <Row
+                  label="Funding"
+                  values={columns.map((c) =>
+                    c.funding ? (
+                      <span key="f" className="text-xs">
+                        {c.funding.text}
+                        <span className="block text-[11px] text-ink-subtle mt-0.5">
+                          {c.funding.from === "source" ? "Confirmed from your sources" : "Typical, from Discover; confirm on the official page"}
+                        </span>
+                      </span>
+                    ) : null
+                  )}
+                />
 
                 <GroupRow label="Timeline & progress" span={columns.length} />
                 <Row
@@ -284,6 +348,10 @@ export default async function ComparePage({ searchParams }: PageProps) {
                           {countdownLabel(c.app.deadline, today)}
                         </span>
                         {c.app.id === firstDueId && <Badge tone="amber">Due first</Badge>}
+                      </span>
+                    ) : c.typicalWindow ? (
+                      <span key="w" className="text-xs text-ink-muted">
+                        <span className="font-semibold text-ink-main">No date set.</span> Usually: {c.typicalWindow}
                       </span>
                     ) : null
                   )}
@@ -305,10 +373,16 @@ export default async function ComparePage({ searchParams }: PageProps) {
                       >
                         {c.eligibility.label}
                       </span>
+                    ) : c.eligibilityNeedsScores ? (
+                      <Link key="scores" href="/app/eligibility" className="text-xs font-bold text-brand hover:text-brand-dark">
+                        Add your scores to check
+                      </Link>
                     ) : null
                   )}
                 />
 
+                {columns.some((c) => c.cost.hasAny) && (
+                <>
                 <GroupRow label={`Costs (${displayCurrency})`} span={columns.length} />
                 <Row label="Tuition / year" values={columns.map((c) => money(c.converted.tuition))} />
                 <Row label="Living / year" values={columns.map((c) => money(c.converted.living))} />
@@ -364,14 +438,20 @@ export default async function ComparePage({ searchParams }: PageProps) {
                     );
                   })}
                 />
+                </>
+                )}
               </tbody>
             </table>
           </div>
           <p className="px-4 py-3 text-[11px] text-ink-subtle border-t border-glass-borderSubtle">
-            {fxDate
+            Rows with nothing to compare yet are hidden; add the missing details listed under each application to fill
+            them in.{" "}
+            {!columns.some((c) => c.cost.hasAny)
+              ? "Costs appear once you add tuition, living costs or funding on an application's Edit page."
+              : fxDate
               ? `Other currencies converted at European Central Bank reference rates from ${fxDate} (via Frankfurter). Conversions are approximate.`
-              : "All amounts shown in the currency they were entered in."}{" "}
-            Net cost = application fee + (tuition + living) × duration − funding × duration.
+              : "All amounts shown in the currency they were entered in."}
+            {columns.some((c) => c.cost.hasAny) && " Net cost = application fee + (tuition + living) × duration − funding × duration."}
           </p>
         </section>
       )}
@@ -393,7 +473,9 @@ function GroupRow({ label, span }: { label: string; span: number }) {
   );
 }
 
+/** A comparison row; rows that are empty for every application aren't shown. */
 function Row({ label, values, strong }: { label: string; values: React.ReactNode[]; strong?: boolean }) {
+  if (!rowHasAnyValue(values)) return null;
   return (
     <tr className="border-t border-slate-200/80 align-top">
       <th scope="row" className="sticky left-0 z-10 bg-white/95 backdrop-blur px-4 py-3 text-left text-xs font-bold text-ink-muted">
