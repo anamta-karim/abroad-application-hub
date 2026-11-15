@@ -4,11 +4,11 @@
 
 ### Track study-abroad deadlines, ingest official university guidelines, and generate tailored prep blueprints — strictly backed by verified evidence.
 
-![Next.js](https://img.shields.io/badge/Next.js-15.5-black.svg)
+![Next.js](https://img.shields.io/badge/Next.js-16-black.svg)
 ![React](https://img.shields.io/badge/React-19-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6.svg)
 ![Supabase](https://img.shields.io/badge/backend-Supabase_PostgreSQL-3ECF8E.svg)
-![Tests](https://img.shields.io/badge/tests-vitest_121_passed-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-vitest_131_passed-brightgreen.svg)
 ![Design](https://img.shields.io/badge/design-Cool_Blue_Glassmorphism-60A5FA.svg)
 
 [🚀 **Visit Live App**](https://abroad-application-hub.vercel.app)  ·  [Getting started](#getting-started)  ·  [How it works](#how-it-works)  ·  [Honest by design](#honest-by-design)
@@ -61,6 +61,7 @@ When a requirement is missing from your document, it says so openly instead of m
 | 🎯 **Application Tracker** | Add a program or scholarship | Status tracking, deadline countdowns, archive of past-due items, and an **Opening Watchlist** for intakes that haven't opened |
 | 🗓️ **This Week & Calendar** | Open the dashboard or Deadlines page | A ranked list of what needs attention now, and a month calendar of deadlines, due dates and expected openings |
 | 📅 **Calendar Sync** | Create a private link in Settings | Your deadlines in Google Calendar, Apple Calendar or Outlook, updated automatically, with alerts 7 days and 1 day before |
+| ✉️ **Email Reminders** | Turn on **Email me reminders** in Settings | One email a day, only when something is due: deadlines 14/7/3/1 days before and on the day, tasks and documents due tomorrow or today, and watchlist openings; each reminder is sent once |
 | 💰 **Costs & Compare** | Enter tuition, living costs, fees and funding | Net cost per application, and a side-by-side comparison of up to 4 applications in one currency (ECB exchange rates) |
 | 🗂️ **Document Checklist** | Tick the common documents you already have | Each application's checklist matched against them: what's covered, what's still needed, what expires before the deadline, and what's specific to that application |
 | 📄 **Official Source Ingestion** | Paste an admissions link or upload a prospectus PDF | Text extracted with page numbers and section titles; suggested deadlines and required documents for you to confirm |
@@ -81,7 +82,7 @@ When a requirement is missing from your document, it says so openly instead of m
 | **Row-Level Security (RLS)** | PostgreSQL policies ensure complete owner isolation; no user can ever query or view another user's documents or applications |
 | **Clean Glassmorphism UI** | A tailored Cool Blue frosted glass design system with backdrop blur, ambient color glow, and accessible contrast |
 | **Zero-Cost Deployment** | Fully functional without paid subscriptions: free-tier Supabase, Next.js on Vercel (running in the same region as the database), and an optional Gemini API key |
-| **Automated Testing** | 121 automated tests covering security, grounding, PDF extraction, blueprints, costs, calendar and document matching, run on every push by GitHub Actions |
+| **Automated Testing** | 131 automated tests covering security, grounding, PDF extraction, blueprints, costs, calendar and document matching, run on every push by GitHub Actions |
 
 ---
 
@@ -146,7 +147,7 @@ The test suite runs 34 automated checks on every build, verifying security, grou
 
 | Part | Tool | Why it was chosen |
 |---|---|---|
-| **Framework** | Next.js 15 (App Router) | Modern server components, fast routing, and clean Server Actions |
+| **Framework** | Next.js 16 (App Router, Turbopack) | Server components, Server Actions, and a Node.js proxy for session refresh |
 | **Frontend** | React 19 + Tailwind CSS | Fluid reactive state, custom frosted glass styling, responsive layout |
 | **Typography** | Manrope & DM Sans | Clean, legible font pairing designed for dense information dashboards |
 | **Backend & Database** | Supabase (PostgreSQL) | Native authentication, instant relational data, and Row Level Security |
@@ -154,7 +155,8 @@ The test suite runs 34 automated checks on every build, verifying security, grou
 | **Security Shield** | Node.js `dns` & `net` | Prevents SSRF attacks by inspecting resolved network addresses before fetching |
 | **AI Synthesis** | Grounded rules engine + optional Google Gemini (`gemini-3.5-flash-lite`, configurable) | Works fully without an API key; with one, the model writes answers and blueprints from the same cited evidence |
 | **Hosting** | Vercel (Sydney region) + Supabase | Server code runs next to the database, so each query is a few milliseconds |
-| **Testing** | Vitest + GitHub Actions | Typecheck and tests on every push and pull request |
+| **Email** | Resend + Vercel Cron | Optional daily reminder digest at 08:00 IST |
+| **Testing** | Vitest + ESLint + GitHub Actions | Typecheck, lint, tests and a production build on every push and pull request |
 
 ---
 
@@ -163,7 +165,7 @@ The test suite runs 34 automated checks on every build, verifying security, grou
 Follow these simple steps to run the project locally on your machine.
 
 ### What you need:
-* **Node.js** (v18.18 or newer) — [Download here](https://nodejs.org/)
+* **Node.js** (v20.9 or newer) — [Download here](https://nodejs.org/)
 * A free **Supabase** account — [Sign up here](https://supabase.com)
 
 ---
@@ -202,6 +204,11 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # Optional: free key from https://api.data.gov/signup/ for US program search in Discover
 # COLLEGE_SCORECARD_API_KEY=your-key-here
+
+# Optional: daily email reminders (also needs SUPABASE_SERVICE_ROLE_KEY)
+# RESEND_API_KEY=re_...
+# REMINDER_FROM_EMAIL=AbroadAtlas <reminders@your-verified-domain.com>
+# CRON_SECRET=any-long-random-string
 ```
 
 ### Step 4: Set up the database
@@ -211,6 +218,7 @@ In your Supabase project dashboard, click **SQL Editor** &rarr; **New query**, a
 3. [`20261113000000_parent_ownership_policies.sql`](supabase/migrations/20261113000000_parent_ownership_policies.sql): stricter ownership rules
 4. [`20261114000000_application_costs.sql`](supabase/migrations/20261114000000_application_costs.sql): cost fields
 5. [`20261115000000_calendar_feeds.sql`](supabase/migrations/20261115000000_calendar_feeds.sql): private calendar feeds
+6. [`20261116000000_email_reminders.sql`](supabase/migrations/20261116000000_email_reminders.sql): email reminder settings and send log
 
 ### Step 5: Start the app
 ```bash
@@ -222,7 +230,19 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser!
 ```bash
 npm test
 ```
-All 121 tests run locally (the same checks GitHub runs on every push).
+All 131 tests run locally (the same checks GitHub runs on every push).
+
+---
+
+### Optional: email reminders
+1. Create a free [Resend](https://resend.com) account and an API key. To email anyone other than yourself, verify a sending domain in Resend.
+2. In Vercel → Settings → Environment Variables add `RESEND_API_KEY`, `REMINDER_FROM_EMAIL`, `CRON_SECRET` (any long random string) and `SUPABASE_SERVICE_ROLE_KEY`, then redeploy.
+3. Run the `20261116000000_email_reminders.sql` migration, and turn on **Email me reminders** in Settings.
+
+The job runs daily at 02:30 UTC (08:00 IST). To preview what it would send without sending (add `&date=YYYY-MM-DD` to preview a future day):
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" "https://your-app.vercel.app/api/cron/reminders?dryRun=1"
+```
 
 ---
 
@@ -242,10 +262,11 @@ All 121 tests run locally (the same checks GitHub runs on every push).
 
 ```
 abroad-application-hub/
-├── app/                              # Next.js 15 App Router pages & actions
+├── app/                              # Next.js 16 App Router pages & actions
 │   ├── api/
 │   │   ├── admissions/fetch-details/ # URL auto-fill
-│   │   └── calendar/[token]/         # Private iCalendar feed
+│   │   ├── calendar/[token]/         # Private iCalendar feed
+│   │   └── cron/reminders/           # Daily email reminders (Vercel Cron)
 │   ├── app/                          # Signed-in workspace
 │   │   ├── applications/             # Application pages, new & edit forms
 │   │   │   └── [id]/rag/ & sources/  # Q&A, blueprints, source ingestion actions
@@ -266,10 +287,12 @@ abroad-application-hub/
 │   ├── rag/                          # Retrieval, Q&A and application-specific blueprints
 │   ├── supabase/                     # Supabase clients, ownership checks
 │   ├── calendar.ts, ics.ts, weekly.ts  # Calendar grid, iCalendar feed, This week
+│   ├── reminders.ts, email/           # Reminder selection, email content, Resend client
 │   └── costs.ts, fx.ts               # Cost estimates & currency conversion
+├── proxy.ts                          # Session refresh & /app sign-in guard
 ├── supabase/migrations/              # SQL schema, RLS policies, functions
-├── tests/                            # Vitest suite (121 tests)
-└── .github/workflows/ci.yml          # Typecheck & tests on every push
+├── tests/                            # Vitest suite (131 tests)
+└── .github/workflows/ci.yml          # Typecheck, lint, tests & build on every push
 ```
 
 ---
@@ -295,7 +318,6 @@ abroad-application-hub/
 
 **Next Steps:**
 * OCR for scanned prospectuses and certificates.
-* Email reminders alongside the calendar feed.
 * Recommendation-letter tracker and eligibility matching against your profile.
 
 ---

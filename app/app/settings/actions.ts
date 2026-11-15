@@ -57,6 +57,10 @@ export async function deleteUserDataAndAccountAction(): Promise<SettingsActionRe
     // 5b. Revoke the private calendar feed URL
     await supabase.from("calendar_feeds" as any).delete().eq("user_id", userId);
 
+    // 5c. Stop email reminders and clear their send log
+    await supabase.from("reminder_settings" as any).delete().eq("user_id", userId);
+    await supabase.from("reminder_log" as any).delete().eq("user_id", userId);
+
     // 6. Delete user profile
     await supabase.from("profiles").delete().eq("id", userId);
 
@@ -181,4 +185,29 @@ export async function disableCalendarFeedAction(): Promise<CalendarFeedResult> {
     return { error: isMissingTable(error) ? FEED_MIGRATION_HINT : error.message };
   }
   return { token: null };
+}
+
+// ── Email reminders ──
+
+/** Turns the daily reminder email on or off for the signed-in user. */
+export async function setEmailRemindersAction(enabled: boolean): Promise<{ error?: string; enabled?: boolean }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Authentication required." };
+
+  const { error } = await supabase
+    .from("reminder_settings" as any)
+    .upsert({ user_id: user.id, email_enabled: enabled }, { onConflict: "user_id" });
+
+  if (error) {
+    const missing = error.code === "PGRST205" || error.code === "42P01";
+    return {
+      error: missing
+        ? "Email reminders need the 20261116000000_email_reminders.sql migration. Run it in the Supabase SQL Editor, then try again."
+        : error.message,
+    };
+  }
+  return { enabled };
 }

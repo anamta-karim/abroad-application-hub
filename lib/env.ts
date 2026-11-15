@@ -15,6 +15,9 @@ const envSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().optional(),
   COLLEGE_SCORECARD_API_KEY: z.string().optional(),
+  RESEND_API_KEY: z.string().optional(),
+  REMINDER_FROM_EMAIL: z.string().optional(),
+  CRON_SECRET: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -32,6 +35,9 @@ export function validateEnv(): {
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     GEMINI_MODEL: process.env.GEMINI_MODEL,
     COLLEGE_SCORECARD_API_KEY: process.env.COLLEGE_SCORECARD_API_KEY,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    REMINDER_FROM_EMAIL: process.env.REMINDER_FROM_EMAIL,
+    CRON_SECRET: process.env.CRON_SECRET,
   });
 
   if (!result.success) {
