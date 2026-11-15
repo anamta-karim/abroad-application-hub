@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/currentUser";
 import { signOutAction } from "@/app/auth/actions";
 import { AppSidebar } from "@/components/AppSidebar";
+import { FeedbackButton } from "@/components/FeedbackButton";
+import { isAdminEmail } from "@/lib/admin";
 
 export default async function AppLayout({
   children,
@@ -32,13 +34,14 @@ export default async function AppLayout({
     <div className="min-h-screen p-2 sm:p-4 lg:p-6 flex flex-col justify-center">
       {/* ═══ Master Floating Frosted Glass Tablet (CoachPro / Alyona Style) ═══ */}
       <div className="w-full max-w-[1540px] min-h-[calc(100vh-2rem)] sm:min-h-[calc(100vh-3rem)] mx-auto glass-stage rounded-[28px] sm:rounded-[36px] flex flex-col lg:flex-row overflow-hidden shadow-2xl">
-        <AppSidebar displayName={displayName} signOutAction={signOutAction} />
+        <AppSidebar displayName={displayName} signOutAction={signOutAction} isAdmin={isAdminEmail(user.email)} />
 
         {/* ═══ Main Content Canvas ═══ */}
         <main className="flex-1 flex flex-col min-w-0 p-5 sm:p-8 lg:p-10 overflow-y-auto">
           {children}
         </main>
       </div>
+      <FeedbackButton />
     </div>
   );
 }
