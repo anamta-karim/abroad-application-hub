@@ -8,7 +8,7 @@
 ![React](https://img.shields.io/badge/React-19-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6.svg)
 ![Supabase](https://img.shields.io/badge/backend-Supabase_PostgreSQL-3ECF8E.svg)
-![Tests](https://img.shields.io/badge/tests-vitest_133_passed-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-vitest_146_passed-brightgreen.svg)
 ![Design](https://img.shields.io/badge/design-Cool_Blue_Glassmorphism-60A5FA.svg)
 
 [🚀 **Visit Live App**](https://abroad-application-hub.vercel.app)  ·  [Getting started](#getting-started)  ·  [How it works](#how-it-works)  ·  [Honest by design](#honest-by-design)
@@ -67,6 +67,9 @@ When a requirement is missing from your document, it says so openly instead of m
 | 📄 **Official Source Ingestion** | Paste an admissions link or upload a prospectus PDF | Text extracted with page numbers and section titles; suggested deadlines and required documents for you to confirm |
 | 💬 **Grounded Q&A** | Ask *"What IELTS score is required?"* | An answer quoted from your sources with the page number, or an honest "not found" |
 | 📝 **Application-Specific Blueprints** | Click **SOP**, **Interview**, **LOR** or **Study Plan** | A plan built from that application's own requirements: quoted limits and rules, a tailored structure, a timeline counted back from its deadline, and a list of what the sources don't say |
+| 🧪 **Sample Application** | Click **Try a sample application** on an empty dashboard | A fictional program with a source, suggested facts, a checklist, tasks and costs, so every feature can be explored before adding real data |
+| 📱 **Installable App** | Choose **Install** in Chrome or Edge, or **Add to Home Screen** on iPhone | AbroadAtlas in its own window with an app icon and shortcuts to Add application, Deadlines and Documents |
+| 💬 **Feedback** | Click **Feedback** on any page | Your note, with the page it came from, lands in the owner's feedback inbox |
 | 🔒 **Privacy & Data Freedom** | Click **Export Data** or **Delete Account** in Settings | A JSON backup of everything, or permanent erasure, with strict per-user database isolation |
 
 ---
@@ -82,7 +85,7 @@ When a requirement is missing from your document, it says so openly instead of m
 | **Row-Level Security (RLS)** | PostgreSQL policies ensure complete owner isolation; no user can ever query or view another user's documents or applications |
 | **Clean Glassmorphism UI** | A tailored Cool Blue frosted glass design system with backdrop blur, ambient color glow, and accessible contrast |
 | **Zero-Cost Deployment** | Fully functional without paid subscriptions: free-tier Supabase, Next.js on Vercel (running in the same region as the database), and an optional Gemini API key |
-| **Automated Testing** | 133 automated tests covering security, grounding, PDF extraction, blueprints, costs, calendar and document matching, run on every push by GitHub Actions |
+| **Automated Testing** | 146 automated tests covering security, grounding, PDF extraction, blueprints, costs, calendar, document matching and usage limits, run on every push by GitHub Actions |
 
 ---
 
@@ -210,6 +213,14 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 # REMINDER_FROM_EMAIL=AbroadAtlas <reminders@your-verified-domain.com>
 # CRON_SECRET=any-long-random-string
 # REMINDER_ALLOWED_EMAILS=you@example.com   # limit reminders while using the test sender
+
+# Optional: per-user daily limits (defaults 30 AI answers, 20 page fetches, 20 feedback notes)
+# DAILY_AI_LIMIT=30
+# DAILY_FETCH_LIMIT=20
+# DAILY_FEEDBACK_LIMIT=20
+
+# Optional: who can read the feedback inbox at /app/feedback (also needs SUPABASE_SERVICE_ROLE_KEY)
+# ADMIN_EMAILS=you@example.com
 ```
 
 ### Step 4: Set up the database
@@ -220,6 +231,7 @@ In your Supabase project dashboard, click **SQL Editor** &rarr; **New query**, a
 4. [`20261114000000_application_costs.sql`](supabase/migrations/20261114000000_application_costs.sql): cost fields
 5. [`20261115000000_calendar_feeds.sql`](supabase/migrations/20261115000000_calendar_feeds.sql): private calendar feeds
 6. [`20261116000000_email_reminders.sql`](supabase/migrations/20261116000000_email_reminders.sql): email reminder settings and send log
+7. [`20261117000000_usage_limits_and_feedback.sql`](supabase/migrations/20261117000000_usage_limits_and_feedback.sql): daily usage limits and the feedback inbox
 
 ### Step 5: Start the app
 ```bash
@@ -231,7 +243,7 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser!
 ```bash
 npm test
 ```
-All 133 tests run locally (the same checks GitHub runs on every push).
+All 146 tests run locally (the same checks GitHub runs on every push).
 
 ---
 
@@ -246,6 +258,11 @@ The job runs daily at 02:30 UTC (08:00 IST). To preview what it would send witho
 curl -H "Authorization: Bearer $CRON_SECRET" "https://your-app.vercel.app/api/cron/reminders?dryRun=1"
 ```
 
+### Optional: feedback inbox and daily limits
+Set `ADMIN_EMAILS` to your own address (with `SUPABASE_SERVICE_ROLE_KEY` set) and a **Feedback inbox** link appears in your sidebar, listing every note sent with the Feedback button. Everyone else gets a 404 there.
+
+Each user gets 30 AI-written answers, 20 page fetches and 20 feedback notes per day (change them with `DAILY_AI_LIMIT`, `DAILY_FETCH_LIMIT` and `DAILY_FEEDBACK_LIMIT`). Over the AI limit, answers and blueprints are still built directly from the sources, with a note saying so. Until the 7th migration is run the limits are not enforced, and the server logs a warning.
+
 ---
 
 ## Troubleshooting
@@ -256,6 +273,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" "https://your-app.vercel.app/api/cr
 | **"Failed to fetch official URL" during ingestion** | The website may be blocking automated scrapers, or the address might be private/internal. Upload the prospectus as a PDF instead |
 | **Webpage is missing sections** | Some university portals render content purely via JavaScript. Use the **Upload PDF** option for 100% complete guideline extraction |
 | **"Could not find verified evidence" in Q&A** | This means the exact topic was not mentioned in the attached document. Check if the university has a separate department annex or language policy PDF |
+| **"You've reached today's limit"** | Daily limits reset at midnight UTC. Raise them with the `DAILY_*_LIMIT` variables, or upload the page as a PDF (uploads are not limited) |
 | **Port 3000 is already in use** | Run `npm run dev -- -p 3001` to start the app on another port |
 
 ---
@@ -293,7 +311,7 @@ abroad-application-hub/
 │   └── costs.ts, fx.ts               # Cost estimates & currency conversion
 ├── proxy.ts                          # Session refresh & /app sign-in guard
 ├── supabase/migrations/              # SQL schema, RLS policies, functions
-├── tests/                            # Vitest suite (133 tests)
+├── tests/                            # Vitest suite (146 tests)
 └── .github/workflows/ci.yml          # Typecheck, lint, tests & build on every push
 ```
 
