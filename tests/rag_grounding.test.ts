@@ -3,7 +3,7 @@ import { tokenize } from "@/lib/rag/retrieval";
 
 describe("RAG Grounding & Evidence Abstention Engine", () => {
   it("strictly abstains when query has zero evidence in source chunks", () => {
-    const query = "What is the tuition fee discount for astrophysics students?";
+    const _query = "What is the tuition fee discount for astrophysics students?";
     const chunks = [
       {
         content: "The department offers courses in Medieval European History and Renaissance Art.",

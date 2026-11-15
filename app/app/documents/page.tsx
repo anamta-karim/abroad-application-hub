@@ -73,7 +73,7 @@ export default async function DocumentsPage() {
             By application
           </h2>
           <p className="text-xs text-ink-muted mt-0.5">
-            Each application's document checklist, compared with what you have. Checklists come from the requirements you
+            Each application&apos;s document checklist, compared with what you have. Checklists come from the requirements you
             add or confirm on each application.
           </p>
         </div>

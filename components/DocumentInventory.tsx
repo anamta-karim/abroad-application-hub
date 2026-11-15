@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import {
   setCommonDocumentAction,
   setDocumentExpiryAction,
@@ -33,9 +33,15 @@ interface Props {
 }
 
 export function DocumentInventory({ items, owned, today }: Props) {
-  // Optimistic "have it" state, re-synced whenever the server data changes
-  const [have, setHave] = useState<Set<string>>(() => new Set(owned.map((o) => o.document_type)));
-  useEffect(() => setHave(new Set(owned.map((o) => o.document_type))), [owned]);
+  // Optimistic ticks layered over the server's data: an override shows the
+  // user's click immediately and is dropped if the save fails. Once the server
+  // data refreshes it agrees with the override, so no syncing effect is needed.
+  const [overrides, setOverrides] = useState<Map<string, boolean>>(() => new Map());
+  const have = new Set(owned.map((o) => o.document_type));
+  for (const [key, value] of overrides) {
+    if (value) have.add(key);
+    else have.delete(key);
+  }
 
   const [error, setError] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
@@ -49,19 +55,13 @@ export function DocumentInventory({ items, owned, today }: Props) {
   async function toggle(key: string, next: boolean) {
     setError(null);
     setBusyKey(key);
-    setHave((prev) => {
-      const s = new Set(prev);
-      if (next) s.add(key);
-      else s.delete(key);
-      return s;
-    });
+    setOverrides((prev) => new Map(prev).set(key, next));
     const err = await runAction(() => setCommonDocumentAction(key, next));
     if (err) {
-      setHave((prev) => {
-        const s = new Set(prev);
-        if (next) s.delete(key);
-        else s.add(key);
-        return s;
+      setOverrides((prev) => {
+        const m = new Map(prev);
+        m.delete(key); // fall back to what the server has
+        return m;
       });
       setError(`Couldn't update your documents: ${err}`);
     }
@@ -103,7 +103,7 @@ export function DocumentInventory({ items, owned, today }: Props) {
             Your documents
           </h2>
           <p className="text-xs text-ink-muted mt-0.5">
-            Tick what you already have. Add expiry dates so you're warned before a deadline.
+            Tick what you already have. Add expiry dates so you&apos;re warned before a deadline.
           </p>
         </div>
         <span className="text-xs font-bold text-teal-dark">

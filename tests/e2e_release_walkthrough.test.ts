@@ -68,7 +68,7 @@ describe("Phase 6 End-to-End Release Walkthrough & Release Gates", () => {
     expect(candidateFacts[0].value.extractedValue).toContain("tuition fee waiver");
 
     // Case B: Query with zero evidence in chunks -> strictly abstains
-    const unrelatedQuery = "Is there a university swimming pool on campus?";
+    const _unrelatedQuery = "Is there a university swimming pool on campus?";
     const matches = dummyChunks.filter((c) =>
       c.content.toLowerCase().includes("swimming pool")
     );

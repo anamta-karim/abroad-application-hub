@@ -49,7 +49,6 @@ export async function fetchAndExtractAdmissionsMetadata(
  */
 export function extractMetadataFromHtml(html: string, pageUrl: string): AdmissionsMetadata {
   const { title: rawTitle, cleanText } = extractCleanTextFromHtml(html);
-  const textLower = cleanText.toLowerCase();
 
   // ── 1. Title Extraction ──
   let title = extractMetaTag(html, "og:title") || extractMetaTag(html, "twitter:title") || rawTitle;
@@ -109,7 +108,7 @@ export function extractMetadataFromHtml(html: string, pageUrl: string): Admissio
   }
 
   // ── 4. Country Detection ──
-  let country = detectCountryFromTextAndUrl(pageUrl, cleanText);
+  const country = detectCountryFromTextAndUrl(pageUrl, cleanText);
 
   // ── 5. Degree Level ──
   let degreeLevel = "Master's";

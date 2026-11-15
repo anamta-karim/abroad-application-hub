@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState } from "react";
-import Link from "next/link";
 import { updatePasswordAction, type AuthActionResult } from "@/app/auth/actions";
 
 const initialState: AuthActionResult = {};

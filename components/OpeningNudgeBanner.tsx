@@ -20,7 +20,6 @@ export function OpeningNudgeBanner({ reminders }: OpeningNudgeBannerProps) {
   if (!reminders || reminders.length === 0) return null;
 
   const now = new Date();
-  const todayDateStr = now.toISOString().split("T")[0];
 
   // Filter reminders due to open today or within next 7 days, or recently opened
   const dueReminders = reminders.filter((r) => {
