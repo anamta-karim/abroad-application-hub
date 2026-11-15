@@ -175,7 +175,11 @@ export function ApplicationPrepHub({ applicationId, hasSources }: ApplicationPre
                 response.isAbstention ? "glass-badge-neutral text-ink-muted" : "glass-badge-teal text-teal-dark"
               }`}
             >
-              {response.isAbstention ? "Evidence Missing (Abstention)" : "Verified Source Grounding"}
+              {response.isAbstention
+                ? "Evidence Missing (Abstention)"
+                : response.generatedBy === "ai"
+                ? "Written with AI from your sources"
+                : "Built from your sources"}
             </span>
 
             <span className="text-[11px] text-ink-subtle">
@@ -293,10 +297,11 @@ function GroundedAnswerView({ content }: { content: string }) {
           return (
             <ul key={pIdx} className="space-y-1.5 pl-1">
               {lines.map((line, lIdx) => {
-                const cleanedLine = line.replace(/^[•\-]\s*/, "");
+                const numbered = line.trim().match(/^(\d+)\.\s+/);
+                const cleanedLine = numbered ? line.trim().slice(numbered[0].length) : line.replace(/^\s*[•\-]\s*/, "");
                 return (
                   <li key={lIdx} className="leading-relaxed flex items-start space-x-2">
-                    <span className="text-brand font-bold mt-0.5">•</span>
+                    <span className="text-brand font-bold mt-0.5 shrink-0 min-w-[0.9rem]">{numbered ? `${numbered[1]}.` : "•"}</span>
                     <span
                       dangerouslySetInnerHTML={{
                         __html: formatInlineMarkdown(cleanedLine),
