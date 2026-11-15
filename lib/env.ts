@@ -18,6 +18,7 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   REMINDER_FROM_EMAIL: z.string().optional(),
   CRON_SECRET: z.string().optional(),
+  REMINDER_ALLOWED_EMAILS: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -38,6 +39,7 @@ export function validateEnv(): {
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     REMINDER_FROM_EMAIL: process.env.REMINDER_FROM_EMAIL,
     CRON_SECRET: process.env.CRON_SECRET,
+    REMINDER_ALLOWED_EMAILS: process.env.REMINDER_ALLOWED_EMAILS,
   });
 
   if (!result.success) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { selectReminders, renderReminderEmail, type ReminderItem } from "@/lib/reminders";
+import { selectReminders, renderReminderEmail, isReminderAllowed, type ReminderItem } from "@/lib/reminders";
 import { isEmailConfigured, sendEmail } from "@/lib/email/resend";
 import { todayString } from "@/lib/calendar";
 
@@ -65,12 +65,26 @@ export async function GET(request: NextRequest) {
     usersChecked: 0,
     emailsSent: 0,
     usersWithNothingDue: 0,
+    usersNotAllowed: 0,
     failures: [] as string[],
     preview: [] as { to: string; subject: string; items: string[] }[],
   };
 
   for (const { user_id: userId } of (optedIn || []) as { user_id: string }[]) {
     summary.usersChecked++;
+
+    // Look the address up first: anyone outside REMINDER_ALLOWED_EMAILS is skipped
+    // before their data is read (the test sender can't deliver to them anyway)
+    const { data: userData } = await admin.auth.admin.getUserById(userId);
+    const email = userData?.user?.email;
+    if (!email) {
+      summary.failures.push(`${userId.slice(0, 8)}: no email address`);
+      continue;
+    }
+    if (!isReminderAllowed(email)) {
+      summary.usersNotAllowed++;
+      continue;
+    }
 
     const [apps, tasks, reqs, openings, log, profile] = await Promise.all([
       db.from("applications").select("id, title, institution_or_provider, deadline, status, archived_at").eq("user_id", userId),
@@ -92,13 +106,6 @@ export async function GET(request: NextRequest) {
 
     if (items.length === 0) {
       summary.usersWithNothingDue++;
-      continue;
-    }
-
-    const { data: userData } = await admin.auth.admin.getUserById(userId);
-    const email = userData?.user?.email;
-    if (!email) {
-      summary.failures.push(`${userId.slice(0, 8)}: no email address`);
       continue;
     }
 

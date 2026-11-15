@@ -197,3 +197,20 @@ export function renderReminderEmail(items: ReminderItem[], appUrl: string, name?
 
   return { subject, html, text: textLines.join("\n") };
 }
+
+/**
+ * Who may use email reminders. REMINDER_ALLOWED_EMAILS is a comma-separated
+ * list; when it's empty or unset, everyone may. Used while emails go through
+ * Resend's test sender, which only delivers to the Resend account owner.
+ */
+export function isReminderAllowed(
+  email: string | null | undefined,
+  allowList: string | undefined = process.env.REMINDER_ALLOWED_EMAILS
+): boolean {
+  const allowed = (allowList || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (allowed.length === 0) return true;
+  return Boolean(email) && allowed.includes(email!.trim().toLowerCase());
+}

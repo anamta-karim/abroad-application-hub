@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { isReminderAllowed } from "@/lib/reminders";
 
 export interface SettingsActionResult {
   error?: string;
@@ -196,6 +197,10 @@ export async function setEmailRemindersAction(enabled: boolean): Promise<{ error
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Authentication required." };
+
+  if (enabled && !isReminderAllowed(user.email)) {
+    return { error: "Email reminders aren't available for your account in this version. Use Calendar Sync instead." };
+  }
 
   const { error } = await supabase
     .from("reminder_settings" as any)

@@ -11,12 +11,30 @@ interface Props {
   /** False when the server has no email provider or service key configured. */
   sendingConfigured: boolean;
   migrationMissing: boolean;
+  /** False when this account isn't on the REMINDER_ALLOWED_EMAILS list. */
+  available: boolean;
 }
 
-export function EmailReminderSettings({ initialEnabled, email, sendingConfigured, migrationMissing }: Props) {
+export function EmailReminderSettings({ initialEnabled, email, sendingConfigured, migrationMissing, available }: Props) {
   const [enabled, setEnabled] = useState(initialEnabled);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  if (!available) {
+    return (
+      <div className="space-y-3">
+        <p className="p-3 text-xs rounded-xl bg-slate-50 border border-slate-200 text-ink-main leading-relaxed">
+          Email reminders aren&apos;t available for your account in this version of AbroadAtlas. To get alerts before
+          your deadlines, use{" "}
+          <a href="#calendar-sync" className="font-bold text-brand hover:text-brand-dark">
+            Calendar Sync
+          </a>{" "}
+          above: your deadlines appear in Google, Apple or Outlook calendar, and Apple and Outlook remind you 7 days and
+          1 day before each one.
+        </p>
+      </div>
+    );
+  }
 
   function toggle(next: boolean) {
     setError(null);

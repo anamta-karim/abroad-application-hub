@@ -8,7 +8,7 @@
 ![React](https://img.shields.io/badge/React-19-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6.svg)
 ![Supabase](https://img.shields.io/badge/backend-Supabase_PostgreSQL-3ECF8E.svg)
-![Tests](https://img.shields.io/badge/tests-vitest_131_passed-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-vitest_133_passed-brightgreen.svg)
 ![Design](https://img.shields.io/badge/design-Cool_Blue_Glassmorphism-60A5FA.svg)
 
 [🚀 **Visit Live App**](https://abroad-application-hub.vercel.app)  ·  [Getting started](#getting-started)  ·  [How it works](#how-it-works)  ·  [Honest by design](#honest-by-design)
@@ -82,7 +82,7 @@ When a requirement is missing from your document, it says so openly instead of m
 | **Row-Level Security (RLS)** | PostgreSQL policies ensure complete owner isolation; no user can ever query or view another user's documents or applications |
 | **Clean Glassmorphism UI** | A tailored Cool Blue frosted glass design system with backdrop blur, ambient color glow, and accessible contrast |
 | **Zero-Cost Deployment** | Fully functional without paid subscriptions: free-tier Supabase, Next.js on Vercel (running in the same region as the database), and an optional Gemini API key |
-| **Automated Testing** | 131 automated tests covering security, grounding, PDF extraction, blueprints, costs, calendar and document matching, run on every push by GitHub Actions |
+| **Automated Testing** | 133 automated tests covering security, grounding, PDF extraction, blueprints, costs, calendar and document matching, run on every push by GitHub Actions |
 
 ---
 
@@ -209,6 +209,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 # RESEND_API_KEY=re_...
 # REMINDER_FROM_EMAIL=AbroadAtlas <reminders@your-verified-domain.com>
 # CRON_SECRET=any-long-random-string
+# REMINDER_ALLOWED_EMAILS=you@example.com   # limit reminders while using the test sender
 ```
 
 ### Step 4: Set up the database
@@ -230,13 +231,14 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser!
 ```bash
 npm test
 ```
-All 131 tests run locally (the same checks GitHub runs on every push).
+All 133 tests run locally (the same checks GitHub runs on every push).
 
 ---
 
 ### Optional: email reminders
 1. Create a free [Resend](https://resend.com) account and an API key. To email anyone other than yourself, verify a sending domain in Resend.
 2. In Vercel → Settings → Environment Variables add `RESEND_API_KEY`, `REMINDER_FROM_EMAIL`, `CRON_SECRET` (any long random string) and `SUPABASE_SERVICE_ROLE_KEY`, then redeploy.
+   Without a verified domain, also set `REMINDER_ALLOWED_EMAILS` to your own address: Resend's test sender (`onboarding@resend.dev`) only delivers to you, so other users see a pointer to Calendar Sync instead of a switch that would never deliver. Remove it once a domain is verified.
 3. Run the `20261116000000_email_reminders.sql` migration, and turn on **Email me reminders** in Settings.
 
 The job runs daily at 02:30 UTC (08:00 IST). To preview what it would send without sending (add `&date=YYYY-MM-DD` to preview a future day):
@@ -291,7 +293,7 @@ abroad-application-hub/
 │   └── costs.ts, fx.ts               # Cost estimates & currency conversion
 ├── proxy.ts                          # Session refresh & /app sign-in guard
 ├── supabase/migrations/              # SQL schema, RLS policies, functions
-├── tests/                            # Vitest suite (131 tests)
+├── tests/                            # Vitest suite (133 tests)
 └── .github/workflows/ci.yml          # Typecheck, lint, tests & build on every push
 ```
 

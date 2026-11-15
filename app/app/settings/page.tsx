@@ -5,6 +5,7 @@ import { AccountDataManagement } from "@/components/AccountDataManagement";
 import { CalendarFeedSettings } from "@/components/CalendarFeedSettings";
 import { EmailReminderSettings } from "@/components/EmailReminderSettings";
 import { isEmailConfigured } from "@/lib/email/resend";
+import { isReminderAllowed } from "@/lib/reminders";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -23,6 +24,7 @@ export default async function SettingsPage() {
     reminderError && (reminderError.code === "PGRST205" || reminderError.code === "42P01")
   );
   const emailSendingConfigured = isEmailConfigured() && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const remindersAvailable = isReminderAllowed(user?.email);
   const feed = feedData as { token: string } | null;
   const feedMigrationMissing = Boolean(
     feedError && (feedError.code === "PGRST205" || feedError.code === "42P01")
@@ -65,7 +67,7 @@ export default async function SettingsPage() {
         </div>
 
         <div className="pt-6 border-t border-glass-borderSubtle space-y-4">
-          <h2 className="font-heading font-bold text-base text-ink-deep">Calendar Sync</h2>
+          <h2 id="calendar-sync" className="font-heading font-bold text-base text-ink-deep scroll-mt-24">Calendar Sync</h2>
           <CalendarFeedSettings
             initialToken={feed?.token ?? null}
             origin={origin}
@@ -80,6 +82,7 @@ export default async function SettingsPage() {
             email={user?.email ?? null}
             sendingConfigured={emailSendingConfigured}
             migrationMissing={remindersMigrationMissing}
+            available={remindersAvailable}
           />
         </div>
 

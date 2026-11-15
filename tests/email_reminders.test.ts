@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { selectReminders, renderReminderEmail, type ReminderInput } from "@/lib/reminders";
+import { selectReminders, renderReminderEmail, isReminderAllowed, type ReminderInput } from "@/lib/reminders";
 import { sendEmail, isEmailConfigured } from "@/lib/email/resend";
 
 const today = "2026-11-15";
@@ -117,5 +117,20 @@ describe("Resend client", () => {
     const bad = await sendEmail({ to: "a@b.c", subject: "s", html: "h", text: "t" });
     expect(bad.ok).toBe(false);
     expect(bad.error).toContain("domain not verified");
+  });
+});
+
+describe("Reminder allow-list", () => {
+  it("allows everyone when the list is empty or unset", () => {
+    expect(isReminderAllowed("anyone@example.com", "")).toBe(true);
+    expect(isReminderAllowed("anyone@example.com", undefined)).toBe(true);
+  });
+
+  it("allows only listed addresses, ignoring case and spaces", () => {
+    const list = " Owner@Gmail.com , second@example.com ";
+    expect(isReminderAllowed("owner@gmail.com", list)).toBe(true);
+    expect(isReminderAllowed("SECOND@example.com", list)).toBe(true);
+    expect(isReminderAllowed("tester@example.com", list)).toBe(false);
+    expect(isReminderAllowed(null, list)).toBe(false);
   });
 });
