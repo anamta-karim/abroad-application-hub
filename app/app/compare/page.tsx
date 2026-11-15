@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import type { ApplicationRow } from "@/types/database";
 import { computeCostSummary, costInputsFromRow, formatMoney, type CostSummary } from "@/lib/costs";
 import { getRates, convertToBase, SUPPORTED_CURRENCIES, SUPPORTED_CURRENCY_CODES } from "@/lib/fx";
 import { countdownLabel, daysBetween, formatDateLabel, todayString } from "@/lib/calendar";
@@ -27,7 +28,7 @@ function readIds(raw: string | string[] | undefined): string[] {
 }
 
 interface Column {
-  app: any;
+  app: ApplicationRow;
   cost: CostSummary;
   /** Amounts converted into the display currency (null = cannot convert). */
   converted: {
@@ -55,9 +56,9 @@ export default async function ComparePage({ searchParams }: PageProps) {
     .select("*")
     .is("archived_at", null)
     .order("created_at", { ascending: false });
-  const apps = (allApps || []) as any[];
+  const apps = allApps || [];
 
-  const selected = selectedIds.map((id) => apps.find((a) => a.id === id)).filter(Boolean) as any[];
+  const selected = selectedIds.map((id) => apps.find((a) => a.id === id)).filter((a): a is ApplicationRow => Boolean(a));
 
   // Display currency: chosen, else the most common currency among selected apps, else USD
   const rawCurrency = String(Array.isArray(sp.currency) ? sp.currency[0] : sp.currency || "").toUpperCase();
@@ -118,7 +119,7 @@ export default async function ComparePage({ searchParams }: PageProps) {
   const lowestNet = netValues.length >= 2 ? Math.min(...netValues) : null;
   const upcoming = columns
     .filter((c) => c.app.deadline && c.app.deadline >= today)
-    .sort((a, b) => (a.app.deadline < b.app.deadline ? -1 : 1));
+    .sort((a, b) => ((a.app.deadline ?? "") < (b.app.deadline ?? "") ? -1 : 1));
   const firstDueId = upcoming.length >= 2 ? upcoming[0].app.id : null;
 
   const money = (n: number | null) => (n === null ? null : formatMoney(n, displayCurrency));

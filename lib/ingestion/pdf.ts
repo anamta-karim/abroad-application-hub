@@ -1,4 +1,5 @@
 import { getDocumentProxy, extractTextItems, getMeta } from "unpdf";
+import { errorName } from "@/lib/errors";
 
 /**
  * PDF text extraction using pdf.js (via unpdf's serverless build).
@@ -167,8 +168,8 @@ export async function extractTextFromPdf(pdfBuffer: Buffer | Uint8Array): Promis
   let pdf;
   try {
     pdf = await getDocumentProxy(bytes);
-  } catch (err: any) {
-    if (err?.name === "PasswordException") {
+  } catch (err) {
+    if (errorName(err) === "PasswordException") {
       throw new PdfExtractionError("encrypted", PDF_ERROR_MESSAGES.encrypted);
     }
     throw new PdfExtractionError("unreadable", PDF_ERROR_MESSAGES.unreadable);

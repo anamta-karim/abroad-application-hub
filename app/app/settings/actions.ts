@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isReminderAllowed } from "@/lib/reminders";
+import { errorMessage } from "@/lib/errors";
 
 export interface SettingsActionResult {
   error?: string;
@@ -53,22 +54,22 @@ export async function deleteUserDataAndAccountAction(): Promise<SettingsActionRe
     await supabase.from("conversations").delete().eq("user_id", userId);
 
     // 5. Delete opening reminders
-    await supabase.from("opening_reminders" as any).delete().eq("user_id", userId);
+    await supabase.from("opening_reminders").delete().eq("user_id", userId);
 
     // 5b. Revoke the private calendar feed URL
-    await supabase.from("calendar_feeds" as any).delete().eq("user_id", userId);
+    await supabase.from("calendar_feeds").delete().eq("user_id", userId);
 
     // 5c. Stop email reminders and clear their send log
-    await supabase.from("reminder_settings" as any).delete().eq("user_id", userId);
-    await supabase.from("reminder_log" as any).delete().eq("user_id", userId);
+    await supabase.from("reminder_settings").delete().eq("user_id", userId);
+    await supabase.from("reminder_log").delete().eq("user_id", userId);
 
     // 6. Delete user profile
     await supabase.from("profiles").delete().eq("id", userId);
 
     // 7. Sign out session
     await supabase.auth.signOut();
-  } catch (err: any) {
-    return { error: err.message || "Failed to complete account deletion." };
+  } catch (err) {
+    return { error: errorMessage(err) || "Failed to complete account deletion." };
   }
 
   redirect("/?deleted=true");
@@ -77,7 +78,7 @@ export async function deleteUserDataAndAccountAction(): Promise<SettingsActionRe
 /**
  * Compiles a comprehensive JSON export of all applicant workspace data.
  */
-export async function exportUserDataAction(): Promise<{ error?: string; data?: any }> {
+export async function exportUserDataAction(): Promise<{ error?: string; data?: Record<string, unknown> }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -105,7 +106,7 @@ export async function exportUserDataAction(): Promise<{ error?: string; data?: a
     supabase.from("tasks").select("*").eq("user_id", userId),
     supabase.from("sources").select("id, source_type, display_name, source_url, file_size_bytes, ingestion_status, created_at").eq("user_id", userId),
     supabase.from("extracted_facts").select("*").eq("user_id", userId),
-    supabase.from("opening_reminders" as any).select("*").eq("user_id", userId),
+    supabase.from("opening_reminders").select("*").eq("user_id", userId),
     supabase.from("status_history").select("*").eq("user_id", userId),
   ]);
 
@@ -162,7 +163,7 @@ export async function regenerateCalendarFeedAction(): Promise<CalendarFeedResult
   const token = randomBytes(32).toString("base64url"); // 43 URL-safe characters
 
   const { error } = await supabase
-    .from("calendar_feeds" as any)
+    .from("calendar_feeds")
     .upsert({ user_id: user.id, token, created_at: new Date().toISOString() }, { onConflict: "user_id" });
 
   if (error) {
@@ -181,7 +182,7 @@ export async function disableCalendarFeedAction(): Promise<CalendarFeedResult> {
   } = await supabase.auth.getUser();
   if (!user) return { error: "Authentication required." };
 
-  const { error } = await supabase.from("calendar_feeds" as any).delete().eq("user_id", user.id);
+  const { error } = await supabase.from("calendar_feeds").delete().eq("user_id", user.id);
   if (error) {
     return { error: isMissingTable(error) ? FEED_MIGRATION_HINT : error.message };
   }
@@ -203,7 +204,7 @@ export async function setEmailRemindersAction(enabled: boolean): Promise<{ error
   }
 
   const { error } = await supabase
-    .from("reminder_settings" as any)
+    .from("reminder_settings")
     .upsert({ user_id: user.id, email_enabled: enabled }, { onConflict: "user_id" });
 
   if (error) {

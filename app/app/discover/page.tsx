@@ -9,6 +9,7 @@ import {
 } from "@/lib/catalog/scholarships";
 import { searchUniversities, STUDY_DESTINATIONS, type UniversityResult } from "@/lib/catalog/universities";
 import { searchUsSchools, filterPrograms, type UsSchoolResult } from "@/lib/catalog/usPrograms";
+import { errorMessage } from "@/lib/errors";
 
 type Tab = "scholarships" | "universities" | "us-programs";
 
@@ -43,14 +44,14 @@ export default async function DiscoverPage({ searchParams }: PageProps) {
   // What the user already has, so results can show "Added"
   const [{ data: appsData }, { data: remindersData }] = await Promise.all([
     supabase.from("applications").select("id, title, institution_or_provider"),
-    supabase.from("opening_reminders" as any).select("title, status"),
+    supabase.from("opening_reminders").select("title, status"),
   ]);
   const addedApps = new Map<string, string>();
   for (const a of appsData || []) {
     addedApps.set(`${a.title}|${a.institution_or_provider || ""}`.toLowerCase(), a.id);
   }
   const watching = new Set(
-    ((remindersData || []) as any[]).filter((r) => r.status === "watching").map((r) => String(r.title).toLowerCase())
+    (remindersData || []).filter((r) => r.status === "watching").map((r) => String(r.title).toLowerCase())
   );
 
   let scholarships: CatalogEntry[] = [];
@@ -63,14 +64,14 @@ export default async function DiscoverPage({ searchParams }: PageProps) {
   } else if (tab === "universities" && q) {
     try {
       universities = await searchUniversities(q, country);
-    } catch (err: any) {
-      searchError = err?.message || "University search failed.";
+    } catch (err) {
+      searchError = errorMessage(err) || "University search failed.";
     }
   } else if (tab === "us-programs" && q) {
     try {
       usSchools = await searchUsSchools(q);
-    } catch (err: any) {
-      searchError = err?.message || "US program search failed.";
+    } catch (err) {
+      searchError = errorMessage(err) || "US program search failed.";
     }
   }
 

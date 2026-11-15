@@ -66,7 +66,7 @@ export default async function DeadlinesPage({ searchParams }: PageProps) {
       .gte("due_date", from)
       .lte("due_date", to),
     supabase
-      .from("opening_reminders" as any)
+      .from("opening_reminders")
       .select("id, title, institution_or_provider, expected_open_date, status")
       .eq("status", "watching")
       .gte("expected_open_date", from)
@@ -88,21 +88,21 @@ export default async function DeadlinesPage({ searchParams }: PageProps) {
       subtitle: a.institution_or_provider,
       href: `/app/applications/${a.id}`,
     })),
-    ...((tasks || []) as any[]).map((t) => ({
+    ...(tasks || []).map((t) => ({
       date: t.due_date as string,
       kind: "task" as const,
       title: t.title,
       subtitle: t.applications?.title ?? null,
       href: `/app/applications/${t.application_id}`,
     })),
-    ...((docs || []) as any[]).map((d) => ({
+    ...(docs || []).map((d) => ({
       date: d.due_date as string,
       kind: "document" as const,
       title: d.document_type,
       subtitle: d.applications?.title ?? null,
       href: `/app/applications/${d.application_id}`,
     })),
-    ...((reminders || []) as any[]).map((r) => ({
+    ...(reminders || []).map((r) => ({
       date: r.expected_open_date as string,
       kind: "opening" as const,
       title: r.title,

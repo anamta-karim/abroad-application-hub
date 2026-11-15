@@ -1,5 +1,7 @@
 "use client";
 
+import { readFactValue } from "@/lib/factValue";
+import type { Json } from "@/types/database";
 import { useState } from "react";
 import { reviewFactAction } from "@/app/app/applications/[id]/sources/actions";
 import type { ReviewState, FactType, Confidence } from "@/types/database";
@@ -10,7 +12,7 @@ interface ExtractedFactItem {
   id: string;
   fact_type: FactType;
   label: string;
-  value: any;
+  value: Json;
   confidence: Confidence;
   review_state: ReviewState;
   created_at: string;
@@ -64,8 +66,8 @@ export function FactReviewPanel({ applicationId, facts }: FactReviewPanelProps) 
   function startEditing(fact: ExtractedFactItem) {
     setEditingId(fact.id);
     const valStr =
-      typeof fact.value === "object"
-        ? fact.value?.extractedValue || fact.label
+      fact.value === null || typeof fact.value === "object"
+        ? readFactValue(fact.value).extractedValue || fact.label
         : String(fact.value || "");
     setEditedValueInput(valStr);
   }
@@ -123,7 +125,7 @@ export function FactReviewPanel({ applicationId, facts }: FactReviewPanelProps) 
             </div>
           ) : (
             pendingFacts.map((fact) => {
-              const val = fact.value || {};
+              const val = readFactValue(fact.value);
               const extractedValue = val.extractedValue || fact.label;
               const context = val.context || "";
               const reason = val.confidenceReason || "";
@@ -235,7 +237,7 @@ export function FactReviewPanel({ applicationId, facts }: FactReviewPanelProps) 
             </div>
           ) : (
             confirmedFacts.map((fact) => {
-              const val = fact.value || {};
+              const val = readFactValue(fact.value);
               const extractedValue = val.extractedValue || fact.label;
 
               return (

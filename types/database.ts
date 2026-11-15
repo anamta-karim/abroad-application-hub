@@ -43,7 +43,7 @@ export type TaskStatus = "open" | "in_progress" | "done" | "dismissed";
 export type MessageRole = "user" | "assistant" | "system";
 export type ReminderStatus = "watching" | "opened" | "converted" | "dismissed";
 
-export interface OpeningReminder {
+export type OpeningReminder = {
   id: string;
   user_id: string;
   title: string;
@@ -57,6 +57,28 @@ export interface OpeningReminder {
   converted_application_id: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type UsageKind = "ai" | "fetch" | "feedback";
+
+/**
+ * Builds a table's Insert/Update shapes from its Row: columns in Required must
+ * be supplied on insert, every other column has a database default or is nullable.
+ */
+type TableFrom<Row extends Record<string, unknown>, Required extends keyof Row> = {
+  Row: Row;
+  Insert: { [K in Required]: Row[K] } & { [K in Exclude<keyof Row, Required>]?: Row[K] };
+  Update: { [K in keyof Row]?: Row[K] };
+  Relationships: [];
+};
+
+export interface CalendarFeedEvent {
+  kind: string;
+  item_id: string;
+  event_date: string;
+  title: string;
+  detail: string | null;
+  application_id: string | null;
 }
 
 export interface Database {
@@ -189,7 +211,22 @@ export interface Database {
           relationship_note?: string | null;
           created_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "application_links_program_application_id_fkey";
+            columns: ["program_application_id"];
+            isOneToOne: false;
+            referencedRelation: "applications";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "application_links_scholarship_application_id_fkey";
+            columns: ["scholarship_application_id"];
+            isOneToOne: false;
+            referencedRelation: "applications";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       sources: {
         Row: {
@@ -318,7 +355,15 @@ export interface Database {
           embedding?: number[] | null;
           created_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "source_chunks_source_id_fkey";
+            columns: ["source_id"];
+            isOneToOne: false;
+            referencedRelation: "sources";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       extracted_facts: {
         Row: {
@@ -402,7 +447,15 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "document_requirements_application_id_fkey";
+            columns: ["application_id"];
+            isOneToOne: false;
+            referencedRelation: "applications";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       user_documents: {
         Row: {
@@ -501,7 +554,15 @@ export interface Database {
           updated_at?: string;
           completed_at?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "tasks_application_id_fkey";
+            columns: ["application_id"];
+            isOneToOne: false;
+            referencedRelation: "applications";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       status_history: {
         Row: {
@@ -665,12 +726,37 @@ export interface Database {
         };
         Relationships: [];
       };
+      opening_reminders: TableFrom<OpeningReminder, "user_id" | "title" | "record_type" | "expected_open_date">;
+      calendar_feeds: TableFrom<{ user_id: string; token: string; created_at: string }, "user_id" | "token">;
+      reminder_settings: TableFrom<
+        { user_id: string; email_enabled: boolean; created_at: string; updated_at: string },
+        "user_id"
+      >;
+      reminder_log: TableFrom<
+        { id: string; user_id: string; item_key: string; sent_on: string; created_at: string },
+        "user_id" | "item_key"
+      >;
+      usage_counters: TableFrom<{ user_id: string; day: string; kind: UsageKind; count: number }, "user_id" | "kind">;
+      feedback: TableFrom<
+        { id: string; user_id: string; page: string | null; message: string; created_at: string },
+        "user_id" | "message"
+      >;
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      calendar_feed_events: { Args: { feed_token: string }; Returns: CalendarFeedEvent[] };
+      consume_usage: { Args: { usage_kind: UsageKind; daily_limit: number }; Returns: boolean };
+      owns_application: { Args: { target_id: string }; Returns: boolean };
+      owns_source: { Args: { target_id: string }; Returns: boolean };
+      owns_snapshot: { Args: { target_id: string }; Returns: boolean };
+      owns_chunk: { Args: { target_id: string }; Returns: boolean };
+      owns_fact: { Args: { target_id: string }; Returns: boolean };
+      owns_conversation: { Args: { target_id: string }; Returns: boolean };
+      owns_message: { Args: { target_id: string }; Returns: boolean };
+      owns_requirement: { Args: { target_id: string }; Returns: boolean };
+      owns_user_document: { Args: { target_id: string }; Returns: boolean };
     };
     Enums: {
       record_type: RecordType;
@@ -690,3 +776,7 @@ export interface Database {
     };
   };
 }
+
+/** Row type of any public table, e.g. Tables<"applications">. */
+export type Tables<T extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][T]["Row"];
+export type ApplicationRow = Tables<"applications">;

@@ -178,7 +178,12 @@ describe("Gemini client", () => {
   });
 
   it("builds a request with system instruction and JSON mode", () => {
-    const body: any = buildGeminiBody({ system: "S", prompt: "P", json: true, temperature: 0.1 });
+    type Parts = { parts: { text: string }[] };
+    const body = buildGeminiBody({ system: "S", prompt: "P", json: true, temperature: 0.1 }) as {
+      systemInstruction: Parts;
+      contents: Parts[];
+      generationConfig: { responseMimeType?: string };
+    };
     expect(body.systemInstruction.parts[0].text).toBe("S");
     expect(body.contents[0].parts[0].text).toBe("P");
     expect(body.generationConfig.responseMimeType).toBe("application/json");

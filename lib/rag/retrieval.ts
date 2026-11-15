@@ -77,7 +77,7 @@ export async function retrieveRelevantChunks(
   const ranked: RankedChunk[] = [];
 
   // 3. Score chunks using weighted term frequency, specificity, heading, and sentence co-occurrence
-  for (const item of chunksData as any[]) {
+  for (const item of chunksData) {
     const content = item.content || "";
     const contentLower = content.toLowerCase();
     const heading = (item.section_heading || "").toLowerCase();

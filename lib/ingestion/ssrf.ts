@@ -1,5 +1,6 @@
 import dns from "dns/promises";
 import net from "net";
+import { errorMessage, errorName } from "@/lib/errors";
 
 export interface SSRFValidationResult {
   isAllowed: boolean;
@@ -161,10 +162,10 @@ export async function validateUrlForSSRF(rawUrl: string): Promise<SSRFValidation
         };
       }
     }
-  } catch (dnsErr: any) {
+  } catch (dnsErr) {
     return {
       isAllowed: false,
-      reason: `DNS resolution failed: ${dnsErr?.message || "domain does not exist"}.`,
+      reason: `DNS resolution failed: ${errorMessage(dnsErr) || "domain does not exist"}.`,
     };
   }
 
@@ -282,9 +283,9 @@ export async function safeFetchHtml(
 
       const text = new TextDecoder("utf-8").decode(totalBuffer);
       return { text, finalUrl: currentUrl, contentType };
-    } catch (err: any) {
+    } catch (err) {
       clearTimeout(timeoutId);
-      if (err.name === "AbortError") {
+      if (errorName(err) === "AbortError") {
         throw new Error(`Request timed out after ${timeoutMs / 1000} seconds.`);
       }
       throw err;

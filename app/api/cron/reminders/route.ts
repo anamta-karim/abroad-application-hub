@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "SUPABASE_SERVICE_ROLE_KEY is not configured." }, { status: 503 });
   }
-  const db = admin as any;
+  const db = admin;
 
   const { data: optedIn, error: settingsError } = await db
     .from("reminder_settings")

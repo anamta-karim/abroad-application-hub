@@ -87,8 +87,8 @@ export default async function ApplicationDetailPage({ params }: ApplicationDetai
 
   const isProgram = application.record_type === "program";
 
-  const linkedAppsFormatted: any[] = isProgram
-    ? ((scholarshipLinks || []) as any[])
+  const linkedAppsFormatted = isProgram
+    ? (scholarshipLinks || [])
         .map((l) => ({
           linkId: l.id,
           id: l.scholarship?.id,
@@ -99,7 +99,7 @@ export default async function ApplicationDetailPage({ params }: ApplicationDetai
           relationship_note: l.relationship_note,
         }))
         .filter((x) => x.id)
-    : ((programLinks || []) as any[])
+    : (programLinks || [])
         .map((l) => ({
           linkId: l.id,
           id: l.program?.id,
@@ -111,8 +111,8 @@ export default async function ApplicationDetailPage({ params }: ApplicationDetai
         }))
         .filter((x) => x.id);
 
-  const sources = (sourcesData || []) as any[];
-  const facts = (factsData || []) as any[];
+  const sources = sourcesData || [];
+  const facts = factsData || [];
 
   // Applications of the opposite type that aren't linked yet
   const targetRecordType = isProgram ? "scholarship" : "program";

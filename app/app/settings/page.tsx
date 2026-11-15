@@ -16,8 +16,8 @@ export default async function SettingsPage() {
     await Promise.all([
       getCurrentUser(),
       supabase.from("profiles").select("display_name, updated_at").limit(1).maybeSingle(),
-      supabase.from("calendar_feeds" as any).select("token").limit(1).maybeSingle(),
-      supabase.from("reminder_settings" as any).select("email_enabled").limit(1).maybeSingle(),
+      supabase.from("calendar_feeds").select("token").limit(1).maybeSingle(),
+      supabase.from("reminder_settings").select("email_enabled").limit(1).maybeSingle(),
     ]);
   const remindersEnabled = Boolean((reminderData as { email_enabled?: boolean } | null)?.email_enabled);
   const remindersMigrationMissing = Boolean(

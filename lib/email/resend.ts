@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 /**
  * Sends email through Resend's REST API (https://resend.com/docs/api-reference/emails/send-email).
  * Needs RESEND_API_KEY and REMINDER_FROM_EMAIL (e.g. "AbroadAtlas <reminders@yourdomain.com>").
@@ -30,7 +31,7 @@ export async function sendEmail(msg: { to: string; subject: string; html: string
     const body = (await res.json().catch(() => ({}))) as { id?: string; message?: string; name?: string };
     if (!res.ok) return { ok: false, error: `HTTP ${res.status}: ${body.message || body.name || "send failed"}` };
     return { ok: true, id: body.id };
-  } catch (err: any) {
-    return { ok: false, error: err?.message || "network error" };
+  } catch (err) {
+    return { ok: false, error: errorMessage(err) || "network error" };
   }
 }

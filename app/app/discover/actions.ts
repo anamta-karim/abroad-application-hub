@@ -136,7 +136,7 @@ export async function addCatalogEntryAction(
   }
 
   const { data: existing } = await supabase
-    .from("opening_reminders" as any)
+    .from("opening_reminders")
     .select("id")
     .eq("user_id", user.id)
     .eq("title", entry.title)
@@ -147,7 +147,7 @@ export async function addCatalogEntryAction(
     return { success: true, alreadyAdded: true };
   }
 
-  const { error } = await supabase.from("opening_reminders" as any).insert({
+  const { error } = await supabase.from("opening_reminders").insert({
     user_id: user.id,
     title: entry.title,
     record_type: entry.recordType,

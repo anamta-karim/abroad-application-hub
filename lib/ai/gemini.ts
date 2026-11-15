@@ -1,3 +1,4 @@
+import { errorMessage, errorName } from "@/lib/errors";
 /**
  * Minimal Google Gemini client (REST, no SDK).
  *
@@ -50,10 +51,10 @@ export function buildGeminiBody(req: GeminiRequest): Record<string, unknown> {
 
 /** Joins the text parts of the first candidate (exported for tests). */
 export function readGeminiText(data: unknown): string | null {
-  const parts = (data as any)?.candidates?.[0]?.content?.parts;
+  const parts = (data as { candidates?: { content?: { parts?: unknown } }[] } | null)?.candidates?.[0]?.content?.parts;
   if (!Array.isArray(parts)) return null;
   const text = parts
-    .map((p: any) => (typeof p?.text === "string" ? p.text : ""))
+    .map((p: { text?: unknown } | null) => (typeof p?.text === "string" ? p.text : ""))
     .join("")
     .trim();
   return text || null;
@@ -86,8 +87,8 @@ export async function generateWithGemini(req: GeminiRequest): Promise<string | n
     const text = readGeminiText(await res.json());
     if (!text) console.warn(`[gemini] ${model} returned no text (possibly blocked by safety filters)`);
     return text;
-  } catch (err: any) {
-    console.warn(`[gemini] ${model} request failed: ${err?.name || "Error"} ${err?.message || ""}`);
+  } catch (err) {
+    console.warn(`[gemini] ${model} request failed: ${errorName(err) || "Error"} ${errorMessage(err) || ""}`);
     return null;
   }
 }

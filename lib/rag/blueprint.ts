@@ -8,6 +8,7 @@
  * state is listed under "Not found in your sources" instead of being invented.
  * Pure functions (no database), so they can be unit tested.
  */
+import type { Json } from "@/types/database";
 import { daysBetween, formatDateLabel, todayString } from "@/lib/calendar";
 
 export type BlueprintType = "sop" | "interview" | "lor" | "study_plan";
@@ -29,6 +30,16 @@ export interface BlueprintFact {
   label: string;
   value: { extractedValue?: string; context?: string } | null;
   review_state: string;
+}
+
+/** Reads a fact's stored JSON value into the shape blueprints use. */
+export function toBlueprintFactValue(value: Json): BlueprintFact["value"] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const { extractedValue, context } = value;
+  return {
+    extractedValue: typeof extractedValue === "string" ? extractedValue : undefined,
+    context: typeof context === "string" ? context : undefined,
+  };
 }
 
 export interface BlueprintRequirement {
