@@ -9,6 +9,8 @@ import {
   type OwnedDocument,
 } from "@/lib/documents/catalog";
 import { countdownLabel, formatDateLabel, todayString } from "@/lib/calendar";
+import { loadLetters, loadLettersNeeded } from "@/lib/recommendationsData";
+import { letterProgress, letterProgressText } from "@/lib/recommendations";
 
 const STATE_STYLES: Record<CoverageState, { icon: string; cls: string; label: (owned: string | null) => string }> = {
   have: { icon: "✓", cls: "text-teal-800 bg-teal-50 border-teal-200", label: (o) => `You have it${o ? ` (${o})` : ""}` },
@@ -22,7 +24,7 @@ export default async function DocumentsPage() {
   const supabase = await createClient();
   const today = todayString();
 
-  const [{ data: ownedData }, { data: appsData }, { data: reqData }] = await Promise.all([
+  const [{ data: ownedData }, { data: appsData }, { data: reqData }, { letters }] = await Promise.all([
     supabase.from("user_documents").select("id, document_type, display_name, expires_on").order("created_at"),
     supabase
       .from("applications")
@@ -31,6 +33,7 @@ export default async function DocumentsPage() {
       .not("status", "in", "(rejected,withdrawn)")
       .order("deadline", { ascending: true, nullsFirst: false }),
     supabase.from("document_requirements").select("application_id, document_type, status"),
+    loadLetters(supabase),
   ]);
 
   const owned = (ownedData || []) as OwnedDocument[];
@@ -47,9 +50,15 @@ export default async function DocumentsPage() {
     neededBy: demand.get(d.key) || 0,
   }));
 
+  const appsWithLetters = apps.filter((a) => letters.some((l) => l.application_id === a.id)).map((a) => a.id);
+  const lettersNeeded = await loadLettersNeeded(supabase, appsWithLetters);
+
   const perApp = apps.map((app) => {
     const reqs = requirements.filter((r) => r.application_id === app.id);
-    const coverage = coverageFor(reqs, owned, app.deadline, today);
+    const appLetters = letters.filter((l) => l.application_id === app.id);
+    const progress = appLetters.length > 0 ? letterProgress(appLetters, lettersNeeded.get(app.id)?.count ?? null) : null;
+    const letterCoverage = progress ? { submitted: progress.submitted, target: progress.target, text: letterProgressText(progress) } : null;
+    const coverage = coverageFor(reqs, owned, app.deadline, today, letterCoverage);
     const covered = coverage.filter((c) => c.state === "have").length;
     return { app, coverage, covered };
   });
@@ -120,7 +129,7 @@ export default async function DocumentsPage() {
                         <span className="min-w-0">
                           <span className="block font-semibold">{c.requirement}</span>
                           <span className="block opacity-80">
-                            {style.label(c.owned && c.owned.display_name !== c.requirement ? c.owned.display_name : null)}
+                            {c.note ?? style.label(c.owned && c.owned.display_name !== c.requirement ? c.owned.display_name : null)}
                             {c.owned?.expires_on && c.state !== "have" ? ` (expires ${formatDateLabel(c.owned.expires_on)})` : ""}
                           </span>
                         </span>

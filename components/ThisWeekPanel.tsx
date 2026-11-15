@@ -7,6 +7,7 @@ const KIND_DOT: Record<ActionKind, string> = {
   deadline: "bg-blue-600",
   document: "bg-violet-500",
   task: "bg-amber-500",
+  letter: "bg-rose-500",
   opening: "bg-teal-500",
 };
 

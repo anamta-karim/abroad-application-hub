@@ -81,7 +81,8 @@ export const ELIGIBILITY_KEYWORDS = ["gpa", "grade point", "ielts", "toefl", "pt
 
 const OPTIONAL_RE = /\b(optional|not required|recommended|encouraged|preferred|waived?|may (?:also )?submit)\b/i;
 
-function sentencesOf(text: string): string[] {
+/** Splits source text into sentences (also used by the letter tracker). */
+export function sentencesOf(text: string): string[] {
   return text
     .split(/(?<=[.!?;])\s+|\n+/)
     .map((s) => s.replace(/\s+/g, " ").trim())

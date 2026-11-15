@@ -52,7 +52,8 @@ export function EmailReminderSettings({ initialEnabled, email, sendingConfigured
     <div className="space-y-3">
       <p className="text-xs text-ink-muted leading-relaxed">
         One email a day, only when something is due: deadlines 14, 7, 3 and 1 days before and on the day, tasks and
-        documents due tomorrow or today, and watchlist programs expected to open. Each reminder is sent once.
+        documents due tomorrow or today, recommendation letters (when to ask, follow up, and when they&apos;re due), and
+        watchlist programs expected to open. Each reminder is sent once.
       </p>
 
       {migrationMissing && (

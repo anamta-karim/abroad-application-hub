@@ -86,13 +86,19 @@ export async function GET(request: NextRequest) {
       continue;
     }
 
-    const [apps, tasks, reqs, openings, log, profile] = await Promise.all([
+    const [apps, tasks, reqs, openings, log, profile, letters] = await Promise.all([
       db.from("applications").select("id, title, institution_or_provider, deadline, status, archived_at").eq("user_id", userId),
       db.from("tasks").select("id, application_id, title, due_date, status").eq("user_id", userId).not("due_date", "is", null),
       db.from("document_requirements").select("id, application_id, document_type, due_date, status").eq("user_id", userId),
       db.from("opening_reminders").select("id, title, expected_open_date, status").eq("user_id", userId).eq("status", "watching"),
       db.from("reminder_log").select("item_key").eq("user_id", userId),
       db.from("profiles").select("display_name").eq("id", userId).maybeSingle(),
+      // Recommendation letters (empty until the letters migration has run)
+      db
+        .from("recommendation_requests")
+        .select("id, application_id, status, asked_on, due_on, recommender:recommender_id (name)")
+        .eq("user_id", userId)
+        .in("status", ["to_ask", "asked", "agreed"]),
     ]);
 
     const items: ReminderItem[] = selectReminders({
@@ -100,6 +106,7 @@ export async function GET(request: NextRequest) {
       tasks: tasks.data || [],
       requirements: reqs.data || [],
       openings: openings.data || [],
+      letters: (letters.data || []).map((l) => ({ ...l, recommender_name: l.recommender?.name ?? "your referee" })),
       today,
       alreadySent: new Set(((log.data || []) as { item_key: string }[]).map((l) => l.item_key)),
     });

@@ -62,6 +62,15 @@ export interface RequirementCoverage {
   state: CoverageState;
   matched: CommonDocument | null;
   owned: OwnedDocument | null;
+  /** Shown instead of the state's usual label (e.g. letter-tracker progress). */
+  note?: string;
+}
+
+/** Recommendation-letter progress for one application, from the letter tracker. */
+export interface LetterCoverage {
+  submitted: number;
+  target: number;
+  text: string;
 }
 
 /**
@@ -72,7 +81,8 @@ export function coverageFor(
   requirements: { document_type: string; status: string }[],
   owned: OwnedDocument[],
   deadline: string | null,
-  today: string
+  today: string,
+  letters: LetterCoverage | null = null
 ): RequirementCoverage[] {
   const byKey = new Map(owned.filter((o) => o.document_type !== "custom").map((o) => [o.document_type, o]));
   const customs = owned.filter((o) => o.document_type === "custom");
@@ -81,6 +91,13 @@ export function coverageFor(
     .filter((r) => r.status !== "not_applicable")
     .map((r) => {
       const matched = matchCommonDocument(r.document_type);
+
+      // Letters are tracked per referee, so the tracker decides, not the inventory
+      if (matched?.key === "recommendations" && letters && letters.target > 0) {
+        const state: CoverageState = letters.submitted >= letters.target ? "have" : "missing";
+        return { requirement: r.document_type, status: r.status, state, matched, owned: null, note: letters.text };
+      }
+
       const own =
         (matched ? byKey.get(matched.key) : undefined) ||
         customs.find((c) => normalise(c.display_name) === normalise(r.document_type)) ||

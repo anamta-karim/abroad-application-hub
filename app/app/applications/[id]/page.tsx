@@ -16,6 +16,9 @@ import { costInputsFromRow } from "@/lib/costs";
 import { EligibilityCard } from "@/components/EligibilityCard";
 import { matchEligibility, profileIsEmpty } from "@/lib/eligibility";
 import { loadAcademicProfile, loadEligibilityRequirements } from "@/lib/eligibilityData";
+import { RecommendationLetters } from "@/components/RecommendationLetters";
+import { loadLetters, loadLettersNeeded, loadRecommenders } from "@/lib/recommendationsData";
+import { todayString } from "@/lib/calendar";
 
 interface ApplicationDetailPageProps {
   params: Promise<{
@@ -43,6 +46,10 @@ export default async function ApplicationDetailPage({ params }: ApplicationDetai
     { data: allApps },
     { profile: academicProfile },
     eligibilityReqs,
+    { letters, migrationMissing: lettersMigrationMissing },
+    referees,
+    lettersNeeded,
+    { data: profileRow },
   ] = await Promise.all([
     getCurrentUser(),
     supabase.from("applications").select("*").eq("id", id).single(),
@@ -82,6 +89,10 @@ export default async function ApplicationDetailPage({ params }: ApplicationDetai
     supabase.from("applications").select("id, title, record_type, institution_or_provider"),
     loadAcademicProfile(supabase),
     loadEligibilityRequirements(supabase, [id]),
+    loadLetters(supabase, id),
+    loadRecommenders(supabase),
+    loadLettersNeeded(supabase, [id]),
+    supabase.from("profiles").select("display_name").maybeSingle(),
   ]);
 
   if (!user) {
@@ -316,6 +327,22 @@ export default async function ApplicationDetailPage({ params }: ApplicationDetai
         <RequirementList
           applicationId={id}
           initialRequirements={requirements || []}
+        />
+      </section>
+
+      {/* ── Recommendation Letters ── */}
+      <section className="glass-stage rounded-3xl p-6 sm:p-8">
+        <RecommendationLetters
+          applicationId={id}
+          appTitle={application.title}
+          institution={application.institution_or_provider}
+          appDeadline={application.deadline}
+          applicantName={profileRow?.display_name ?? null}
+          letters={letters}
+          referees={referees.map((r) => ({ id: r.id, name: r.name, role: r.role }))}
+          needed={lettersNeeded.get(id) ?? null}
+          migrationMissing={lettersMigrationMissing}
+          today={todayString()}
         />
       </section>
 

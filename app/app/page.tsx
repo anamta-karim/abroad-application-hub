@@ -6,6 +6,7 @@ import { ThisWeekPanel } from "@/components/ThisWeekPanel";
 import { SampleApplicationButton } from "@/components/SampleApplicationButton";
 import { buildWeeklyActions } from "@/lib/weekly";
 import { todayString } from "@/lib/calendar";
+import { loadLetters } from "@/lib/recommendationsData";
 import type { OpeningReminder } from "@/types/database";
 
 export default async function DashboardPage() {
@@ -19,6 +20,7 @@ export default async function DashboardPage() {
     { data: remindersData },
     { data: docRequirementsData },
     { data: tasksData },
+    { letters },
   ] = await Promise.all([
     supabase
       .from("applications")
@@ -35,6 +37,7 @@ export default async function DashboardPage() {
       .from("tasks")
       .select("id, application_id, title, due_date, status")
       .in("status", ["open", "in_progress"]),
+    loadLetters(supabase),
   ]);
 
   const applications = applicationsData || [];
@@ -61,6 +64,7 @@ export default async function DashboardPage() {
     requirements: docRequirements,
     tasks: tasksData || [],
     reminders,
+    letters: letters.map((l) => ({ ...l, recommender_name: l.recommender?.name ?? "your referee" })),
     today: todayString(),
   });
 

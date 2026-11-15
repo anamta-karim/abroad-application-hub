@@ -3,6 +3,8 @@
  * rules can be unit tested; the cron route does the data access and sending.
  */
 import { daysBetween, formatDateLabel } from "@/lib/calendar";
+import { ASK_NOTICE_DAYS, FOLLOW_UP_AFTER_DAYS, OPEN_LETTER_STATUSES, letterDueDate } from "@/lib/recommendations";
+import type { LetterStatus } from "@/types/database";
 
 /** Days before an application deadline on which we email (0 = the day itself). */
 export const DEADLINE_OFFSETS = [14, 7, 3, 1, 0];
@@ -38,10 +40,19 @@ export interface ReminderOpening {
   status: string;
 }
 
+export interface ReminderLetter {
+  id: string;
+  application_id: string;
+  status: LetterStatus;
+  asked_on: string | null;
+  due_on: string | null;
+  recommender_name: string;
+}
+
 export interface ReminderItem {
   /** Stable key stored in reminder_log, e.g. "deadline:<id>:7". */
   key: string;
-  kind: "deadline" | "task" | "document" | "opening";
+  kind: "deadline" | "task" | "document" | "letter" | "opening";
   date: string;
   days: number;
   title: string;
@@ -54,6 +65,7 @@ export interface ReminderInput {
   tasks: ReminderTask[];
   requirements: ReminderRequirement[];
   openings: ReminderOpening[];
+  letters?: ReminderLetter[];
   today: string;
   /** Keys already emailed (from reminder_log). */
   alreadySent: Set<string>;
@@ -124,6 +136,49 @@ export function selectReminders(input: ReminderInput): ReminderItem[] {
       detail: app.title,
       path: `/app/applications/${app.id}`,
     });
+  }
+
+  for (const l of input.letters ?? []) {
+    const app = active.get(l.application_id);
+    if (!app || !OPEN_LETTER_STATUSES.has(l.status) || app.status === "rejected" || app.status === "withdrawn") continue;
+    const due = letterDueDate(l, app.deadline);
+    const days = due ? daysBetween(today, due) : null;
+    const path = `/app/applications/${app.id}#letters-heading`;
+
+    if (due && days !== null && DUE_OFFSETS.includes(days)) {
+      items.push({
+        key: `letter:${l.id}:${days}`,
+        kind: "letter",
+        date: due,
+        days,
+        title: `Letter from ${l.recommender_name}: due ${when(days)}`,
+        detail: app.title,
+        path,
+      });
+    } else if (l.status === "to_ask" && due && days !== null && days > 1 && days <= ASK_NOTICE_DAYS) {
+      // Once per letter: referees need a few weeks' notice
+      items.push({
+        key: `letter-ask:${l.id}`,
+        kind: "letter",
+        date: due,
+        days,
+        title: `Ask ${l.recommender_name} for a recommendation letter`,
+        detail: `${app.title} · due ${when(days)}`,
+        path,
+      });
+    } else if (l.status === "asked" && l.asked_on && daysBetween(l.asked_on, today) >= FOLLOW_UP_AFTER_DAYS) {
+      // Once per ask
+      const waited = daysBetween(l.asked_on, today);
+      items.push({
+        key: `letter-follow:${l.id}:${l.asked_on}`,
+        kind: "letter",
+        date: today,
+        days: 0,
+        title: `Follow up with ${l.recommender_name} about your letter`,
+        detail: `${app.title} · asked ${waited} days ago`,
+        path,
+      });
+    }
   }
 
   for (const o of input.openings) {

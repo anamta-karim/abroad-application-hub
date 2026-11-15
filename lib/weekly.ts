@@ -3,6 +3,8 @@
  * applications that needs attention soon, ranked by urgency.
  */
 import { daysBetween } from "@/lib/calendar";
+import { LETTER_STATUS_LABELS, letterNudge } from "@/lib/recommendations";
+import type { LetterStatus } from "@/types/database";
 
 export interface WeeklyApp {
   id: string;
@@ -32,7 +34,16 @@ export interface WeeklyReminder {
   status: string;
 }
 
-export type ActionKind = "deadline" | "document" | "task" | "opening";
+export interface WeeklyLetter {
+  id: string;
+  application_id: string;
+  status: LetterStatus;
+  asked_on: string | null;
+  due_on: string | null;
+  recommender_name: string;
+}
+
+export type ActionKind = "deadline" | "document" | "task" | "letter" | "opening";
 export type Urgency = "overdue" | "urgent" | "soon";
 
 export interface ActionItem {
@@ -51,7 +62,9 @@ export interface ActionItem {
 const PRE_SUBMISSION = new Set(["researching", "preparing"]);
 const DOC_DONE = new Set(["ready", "submitted", "not_applicable"]);
 const TASK_OPEN = new Set(["open", "in_progress"]);
-const KIND_ORDER: Record<ActionKind, number> = { deadline: 0, document: 1, task: 2, opening: 3 };
+const KIND_ORDER: Record<ActionKind, number> = { deadline: 0, document: 1, task: 2, letter: 3, opening: 4 };
+/** Applications whose letters no longer matter. */
+const CLOSED_APP = new Set(["rejected", "withdrawn"]);
 
 export const DEADLINE_HORIZON_DAYS = 14;
 export const ITEM_HORIZON_DAYS = 7;
@@ -84,9 +97,10 @@ export function buildWeeklyActions(input: {
   requirements: WeeklyRequirement[];
   tasks: WeeklyTask[];
   reminders: WeeklyReminder[];
+  letters?: WeeklyLetter[];
   today: string;
 }): ActionItem[] {
-  const { apps, requirements, tasks, reminders, today } = input;
+  const { apps, requirements, tasks, reminders, today, letters = [] } = input;
   const activeApps = new Map(apps.filter((a) => !a.archived_at).map((a) => [a.id, a]));
   const items: ActionItem[] = [];
 
@@ -152,7 +166,44 @@ export function buildWeeklyActions(input: {
     });
   }
 
-  // 4. Watchlist calls expected to open within a week (or already due)
+  // 4. Recommendation letters: due soon, time to ask, or no reply for a while
+  for (const l of letters) {
+    const app = activeApps.get(l.application_id);
+    if (!app || CLOSED_APP.has(app.status)) continue;
+    const nudge = letterNudge(l, app.deadline, today, ITEM_HORIZON_DAYS);
+    if (!nudge) continue;
+    const base = { key: `letter-${l.id}`, kind: "letter" as const, href: `/app/applications/${app.id}#letters-heading` };
+    if (nudge.kind === "due") {
+      items.push({
+        ...base,
+        urgency: urgencyFor(nudge.days),
+        days: nudge.days,
+        date: nudge.date,
+        title: dueTitle(`Letter from ${l.recommender_name}`, nudge.days),
+        detail: `${app.title} · ${LETTER_STATUS_LABELS[l.status]}`,
+      });
+    } else if (nudge.kind === "ask") {
+      items.push({
+        ...base,
+        urgency: nudge.days <= 14 ? "urgent" : "soon",
+        days: nudge.days,
+        date: nudge.date,
+        title: `Ask ${l.recommender_name} for a letter`,
+        detail: `${app.title} · due ${whenLabel(nudge.days)}`,
+      });
+    } else {
+      items.push({
+        ...base,
+        urgency: "soon",
+        days: 0,
+        date: today,
+        title: `Follow up with ${l.recommender_name}`,
+        detail: `${app.title} · asked ${nudge.days} days ago, no reply yet`,
+      });
+    }
+  }
+
+  // 5. Watchlist calls expected to open within a week (or already due)
   for (const rem of reminders) {
     if (rem.status !== "watching") continue;
     const days = daysBetween(today, rem.expected_open_date);

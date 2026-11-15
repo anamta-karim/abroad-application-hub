@@ -80,6 +80,32 @@ export type AcademicProfileRow = {
 
 export type UsageKind = "ai" | "fetch" | "feedback";
 
+export type LetterStatus = "to_ask" | "asked" | "agreed" | "submitted" | "declined";
+
+export type RecommenderRow = {
+  id: string;
+  user_id: string;
+  name: string;
+  role: string | null;
+  email: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type RecommendationRequestRow = {
+  id: string;
+  user_id: string;
+  recommender_id: string;
+  application_id: string;
+  status: LetterStatus;
+  asked_on: string | null;
+  due_on: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 /**
  * Builds a table's Insert/Update shapes from its Row: columns in Required must
  * be supplied on insert, every other column has a database default or is nullable.
@@ -757,6 +783,28 @@ export interface Database {
       >;
       usage_counters: TableFrom<{ user_id: string; day: string; kind: UsageKind; count: number }, "user_id" | "kind">;
       academic_profiles: TableFrom<AcademicProfileRow, "user_id">;
+      recommenders: TableFrom<RecommenderRow, "user_id" | "name">;
+      recommendation_requests: Omit<
+        TableFrom<RecommendationRequestRow, "user_id" | "recommender_id" | "application_id">,
+        "Relationships"
+      > & {
+        Relationships: [
+          {
+            foreignKeyName: "recommendation_requests_recommender_id_fkey";
+            columns: ["recommender_id"];
+            isOneToOne: false;
+            referencedRelation: "recommenders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "recommendation_requests_application_id_fkey";
+            columns: ["application_id"];
+            isOneToOne: false;
+            referencedRelation: "applications";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       feedback: TableFrom<
         { id: string; user_id: string; page: string | null; message: string; created_at: string },
         "user_id" | "message"
@@ -777,6 +825,7 @@ export interface Database {
       owns_message: { Args: { target_id: string }; Returns: boolean };
       owns_requirement: { Args: { target_id: string }; Returns: boolean };
       owns_user_document: { Args: { target_id: string }; Returns: boolean };
+      owns_recommender: { Args: { target_id: string }; Returns: boolean };
     };
     Enums: {
       record_type: RecordType;
