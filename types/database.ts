@@ -59,6 +59,25 @@ export type OpeningReminder = {
   updated_at: string;
 };
 
+export type DegreeLevel = "high_school" | "bachelors" | "masters" | "phd";
+
+export type AcademicProfileRow = {
+  user_id: string;
+  highest_degree: DegreeLevel | null;
+  gpa: number | null;
+  gpa_scale: number | null;
+  ielts_overall: number | null;
+  ielts_min_band: number | null;
+  toefl_ibt: number | null;
+  pte_academic: number | null;
+  duolingo: number | null;
+  gre_total: number | null;
+  gmat_total: number | null;
+  work_experience_years: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type UsageKind = "ai" | "fetch" | "feedback";
 
 /**
@@ -737,6 +756,7 @@ export interface Database {
         "user_id" | "item_key"
       >;
       usage_counters: TableFrom<{ user_id: string; day: string; kind: UsageKind; count: number }, "user_id" | "kind">;
+      academic_profiles: TableFrom<AcademicProfileRow, "user_id">;
       feedback: TableFrom<
         { id: string; user_id: string; page: string | null; message: string; created_at: string },
         "user_id" | "message"

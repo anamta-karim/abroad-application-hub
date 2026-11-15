@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import type { ApplicationRow } from "@/types/database";
+import { eligibilitySummary, matchEligibility, profileIsEmpty } from "@/lib/eligibility";
+import { loadAcademicProfile, loadEligibilityRequirements } from "@/lib/eligibilityData";
 import { computeCostSummary, costInputsFromRow, formatMoney, type CostSummary } from "@/lib/costs";
 import { getRates, convertToBase, SUPPORTED_CURRENCIES, SUPPORTED_CURRENCY_CODES } from "@/lib/fx";
 import { countdownLabel, daysBetween, formatDateLabel, todayString } from "@/lib/calendar";
@@ -43,6 +45,8 @@ interface Column {
   docsReady: number;
   docsTotal: number;
   openTasks: number;
+  /** Eligibility verdict, or null when there's no profile or nothing to check. */
+  eligibility: { label: string; tone: "good" | "bad" | "neutral" } | null;
 }
 
 export default async function ComparePage({ searchParams }: PageProps) {
@@ -79,10 +83,12 @@ export default async function ComparePage({ searchParams }: PageProps) {
     const ids = selected.map((a) => a.id);
     const needsFx = selected.some((a) => a.cost_currency && a.cost_currency !== displayCurrency);
 
-    const [{ data: reqs }, { data: tasks }, fx] = await Promise.all([
+    const [{ data: reqs }, { data: tasks }, fx, { profile }, eligibilityReqs] = await Promise.all([
       supabase.from("document_requirements").select("application_id, status").in("application_id", ids),
       supabase.from("tasks").select("application_id, status").in("application_id", ids),
       needsFx ? getRates(displayCurrency) : Promise.resolve(null),
+      loadAcademicProfile(supabase),
+      loadEligibilityRequirements(supabase, ids),
     ]);
     if (needsFx && !fx) fxFailed = true;
     fxDate = fx?.date ?? null;
@@ -110,6 +116,10 @@ export default async function ComparePage({ searchParams }: PageProps) {
         docsReady: appReqs.filter((r) => r.status === "ready" || r.status === "submitted").length,
         docsTotal: appReqs.length,
         openTasks: (tasks || []).filter((t) => t.application_id === app.id && (t.status === "open" || t.status === "in_progress")).length,
+        eligibility: (() => {
+          const result = matchEligibility(eligibilityReqs.get(app.id) ?? [], profile);
+          return result.total > 0 && !profileIsEmpty(profile) ? eligibilitySummary(result) : null;
+        })(),
       };
     });
   }
@@ -283,6 +293,21 @@ export default async function ComparePage({ searchParams }: PageProps) {
                   values={columns.map((c) => (c.docsTotal > 0 ? `${c.docsReady} of ${c.docsTotal}` : null))}
                 />
                 <Row label="Open tasks" values={columns.map((c) => String(c.openTasks))} />
+                <Row
+                  label="Eligibility"
+                  values={columns.map((c) =>
+                    c.eligibility ? (
+                      <span
+                        key={c.app.id}
+                        className={
+                          c.eligibility.tone === "good" ? "text-teal-800 font-semibold" : c.eligibility.tone === "bad" ? "text-red-700 font-semibold" : undefined
+                        }
+                      >
+                        {c.eligibility.label}
+                      </span>
+                    ) : null
+                  )}
+                />
 
                 <GroupRow label={`Costs (${displayCurrency})`} span={columns.length} />
                 <Row label="Tuition / year" values={columns.map((c) => money(c.converted.tuition))} />

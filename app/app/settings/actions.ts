@@ -63,6 +63,11 @@ export async function deleteUserDataAndAccountAction(): Promise<SettingsActionRe
     await supabase.from("reminder_settings").delete().eq("user_id", userId);
     await supabase.from("reminder_log").delete().eq("user_id", userId);
 
+    // 5d. Academic profile, feedback notes and usage counters
+    await supabase.from("academic_profiles").delete().eq("user_id", userId);
+    await supabase.from("feedback").delete().eq("user_id", userId);
+    await supabase.from("usage_counters").delete().eq("user_id", userId);
+
     // 6. Delete user profile
     await supabase.from("profiles").delete().eq("id", userId);
 
@@ -99,6 +104,8 @@ export async function exportUserDataAction(): Promise<{ error?: string; data?: R
     { data: facts },
     { data: reminders },
     { data: history },
+    { data: academicProfile },
+    { data: feedbackNotes },
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
     supabase.from("applications").select("*").eq("user_id", userId),
@@ -108,6 +115,8 @@ export async function exportUserDataAction(): Promise<{ error?: string; data?: R
     supabase.from("extracted_facts").select("*").eq("user_id", userId),
     supabase.from("opening_reminders").select("*").eq("user_id", userId),
     supabase.from("status_history").select("*").eq("user_id", userId),
+    supabase.from("academic_profiles").select("*").eq("user_id", userId).maybeSingle(),
+    supabase.from("feedback").select("page, message, created_at").eq("user_id", userId),
   ]);
 
   const exportPayload = {
@@ -124,6 +133,8 @@ export async function exportUserDataAction(): Promise<{ error?: string; data?: R
     extractedFacts: facts || [],
     openingReminders: reminders || [],
     statusHistory: history || [],
+    academicProfile: academicProfile ?? null,
+    feedback: feedbackNotes || [],
   };
 
   return { data: exportPayload };

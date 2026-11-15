@@ -13,6 +13,9 @@ import { FactReviewPanel } from "@/components/FactReviewPanel";
 import { ApplicationPrepHub } from "@/components/ApplicationPrepHub";
 import { CostSummaryCard } from "@/components/CostSummaryCard";
 import { costInputsFromRow } from "@/lib/costs";
+import { EligibilityCard } from "@/components/EligibilityCard";
+import { matchEligibility, profileIsEmpty } from "@/lib/eligibility";
+import { loadAcademicProfile, loadEligibilityRequirements } from "@/lib/eligibilityData";
 
 interface ApplicationDetailPageProps {
   params: Promise<{
@@ -38,6 +41,8 @@ export default async function ApplicationDetailPage({ params }: ApplicationDetai
     { data: sourcesData },
     { data: factsData },
     { data: allApps },
+    { profile: academicProfile },
+    eligibilityReqs,
   ] = await Promise.all([
     getCurrentUser(),
     supabase.from("applications").select("*").eq("id", id).single(),
@@ -75,6 +80,8 @@ export default async function ApplicationDetailPage({ params }: ApplicationDetai
       .eq("application_id", id)
       .order("created_at", { ascending: false }),
     supabase.from("applications").select("id, title, record_type, institution_or_provider"),
+    loadAcademicProfile(supabase),
+    loadEligibilityRequirements(supabase, [id]),
   ]);
 
   if (!user) {
@@ -260,6 +267,13 @@ export default async function ApplicationDetailPage({ params }: ApplicationDetai
 
       {/* ── Estimated Cost ── */}
       <CostSummaryCard applicationId={id} inputs={costInputsFromRow(application as Record<string, unknown>)} />
+
+      {/* ── Eligibility ── */}
+      <EligibilityCard
+        result={matchEligibility(eligibilityReqs.get(id) ?? [], academicProfile)}
+        hasProfile={!profileIsEmpty(academicProfile)}
+        hasSources={sources.length > 0}
+      />
 
       {/* ── User Notes / Summary ── */}
       {application.user_notes && (

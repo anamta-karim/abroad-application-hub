@@ -8,7 +8,7 @@
 ![React](https://img.shields.io/badge/React-19-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6.svg)
 ![Supabase](https://img.shields.io/badge/backend-Supabase_PostgreSQL-3ECF8E.svg)
-![Tests](https://img.shields.io/badge/tests-vitest_146_passed-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-vitest_166_passed-brightgreen.svg)
 ![Design](https://img.shields.io/badge/design-Cool_Blue_Glassmorphism-60A5FA.svg)
 
 [🚀 **Visit Live App**](https://abroad-application-hub.vercel.app)  ·  [Getting started](#getting-started)  ·  [How it works](#how-it-works)  ·  [Honest by design](#honest-by-design)
@@ -63,6 +63,7 @@ When a requirement is missing from your document, it says so openly instead of m
 | 📅 **Calendar Sync** | Create a private link in Settings | Your deadlines in Google Calendar, Apple Calendar or Outlook, updated automatically, with alerts 7 days and 1 day before |
 | ✉️ **Email Reminders** | Turn on **Email me reminders** in Settings | One email a day, only when something is due: deadlines 14/7/3/1 days before and on the day, tasks and documents due tomorrow or today, and watchlist openings; each reminder is sent once |
 | 💰 **Costs & Compare** | Enter tuition, living costs, fees and funding | Net cost per application, and a side-by-side comparison of up to 4 applications in one currency (ECB exchange rates) |
+| ✅ **Eligibility Check** | Add your GPA, test scores, work experience and degree once | Every application checked against the requirements stated in its own sources (GPA, IELTS/TOEFL/PTE/Duolingo, GRE/GMAT, experience, prior degree), each with its quote and page; English tests count as alternatives |
 | 🗂️ **Document Checklist** | Tick the common documents you already have | Each application's checklist matched against them: what's covered, what's still needed, what expires before the deadline, and what's specific to that application |
 | 📄 **Official Source Ingestion** | Paste an admissions link or upload a prospectus PDF | Text extracted with page numbers and section titles; suggested deadlines and required documents for you to confirm |
 | 💬 **Grounded Q&A** | Ask *"What IELTS score is required?"* | An answer quoted from your sources with the page number, or an honest "not found" |
@@ -85,7 +86,7 @@ When a requirement is missing from your document, it says so openly instead of m
 | **Row-Level Security (RLS)** | PostgreSQL policies ensure complete owner isolation; no user can ever query or view another user's documents or applications |
 | **Clean Glassmorphism UI** | A tailored Cool Blue frosted glass design system with backdrop blur, ambient color glow, and accessible contrast |
 | **Zero-Cost Deployment** | Fully functional without paid subscriptions: free-tier Supabase, Next.js on Vercel (running in the same region as the database), and an optional Gemini API key |
-| **Automated Testing** | 146 automated tests covering security, grounding, PDF extraction, blueprints, costs, calendar, document matching and usage limits, run on every push by GitHub Actions |
+| **Automated Testing** | 166 automated tests covering security, grounding, PDF extraction, blueprints, costs, calendar, document matching, eligibility and usage limits, run on every push by GitHub Actions |
 
 ---
 
@@ -232,6 +233,7 @@ In your Supabase project dashboard, click **SQL Editor** &rarr; **New query**, a
 5. [`20261115000000_calendar_feeds.sql`](supabase/migrations/20261115000000_calendar_feeds.sql): private calendar feeds
 6. [`20261116000000_email_reminders.sql`](supabase/migrations/20261116000000_email_reminders.sql): email reminder settings and send log
 7. [`20261117000000_usage_limits_and_feedback.sql`](supabase/migrations/20261117000000_usage_limits_and_feedback.sql): daily usage limits and the feedback inbox
+8. [`20261118000000_academic_profiles.sql`](supabase/migrations/20261118000000_academic_profiles.sql): academic profile for eligibility checks
 
 ### Step 5: Start the app
 ```bash
@@ -243,7 +245,7 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser!
 ```bash
 npm test
 ```
-All 146 tests run locally (the same checks GitHub runs on every push).
+All 166 tests run locally (the same checks GitHub runs on every push).
 
 ---
 
@@ -311,7 +313,7 @@ abroad-application-hub/
 │   └── costs.ts, fx.ts               # Cost estimates & currency conversion
 ├── proxy.ts                          # Session refresh & /app sign-in guard
 ├── supabase/migrations/              # SQL schema, RLS policies, functions
-├── tests/                            # Vitest suite (146 tests)
+├── tests/                            # Vitest suite (166 tests)
 └── .github/workflows/ci.yml          # Typecheck, lint, tests & build on every push
 ```
 
@@ -338,7 +340,7 @@ abroad-application-hub/
 
 **Next Steps:**
 * OCR for scanned prospectuses and certificates.
-* Recommendation-letter tracker and eligibility matching against your profile.
+* Recommendation-letter tracker.
 
 ---
 
