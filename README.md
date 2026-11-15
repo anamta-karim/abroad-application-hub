@@ -8,7 +8,7 @@
 ![React](https://img.shields.io/badge/React-19-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6.svg)
 ![Supabase](https://img.shields.io/badge/backend-Supabase_PostgreSQL-3ECF8E.svg)
-![Tests](https://img.shields.io/badge/tests-vitest_81_passed-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-vitest_121_passed-brightgreen.svg)
 ![Design](https://img.shields.io/badge/design-Cool_Blue_Glassmorphism-60A5FA.svg)
 
 [🚀 **Visit Live App**](https://abroad-application-hub.vercel.app)  ·  [Getting started](#getting-started)  ·  [How it works](#how-it-works)  ·  [Honest by design](#honest-by-design)
@@ -56,15 +56,17 @@ When a requirement is missing from your document, it says so openly instead of m
 
 | Feature | You do this | You get this |
 |---|---|---|
-| ⚡ **Auto-Fill & Discovery API** | Paste any admissions link or pick an open scholarship preset | Instant extraction of title, provider, country, degree level, deadline, and funding notes to auto-fill the form with 1 click |
-| 🎯 **Dual-Mode Application Tracker** | Add an open program or an upcoming cycle | Live deadline countdowns, status tags (*Preparing*, *Submitted*, *Accepted*), and clean organization between active applications and your **Intake Watchlist** |
-| 🔔 **Opening Reminders & Nudges** | Set an estimated launch date for a program that isn't out yet | Watchlist reminders with smart dashboard nudge alerts when the portal opening window arrives, plus 1-click conversion into an active application |
-| 📄 **Official Source Ingestion** | Paste an admissions link or upload a prospectus PDF | Safe text extraction stored strictly in your account with section titles, page markers, and document hashing |
-| 💬 **Grounded Q&A** | Ask questions like *"What is the language score required?"* or *"What is the GPA cutoff?"* | Factual answers with clickable page citations and direct quotes, separated from coaching tips |
-| 📝 **SOP Blueprint Studio** | Click **SOP Blueprint** | A 4-pillar narrative structure tailored to your chosen program's focus areas, research tracks, and evaluation criteria |
-| 🎤 **Interview Prep Studio** | Click **Interview Prep** | Selection stage breakdowns (screening, committee, faculty) and 5 high-yield admissions questions with winning response strategies |
-| ✉️ **LOR Strategy Brief** | Click **LOR Strategy** | A referee selection guide, quantified evidence criteria (e.g. class ranking), and an official envelope/letterhead briefing kit for your professors |
-| 🔒 **Privacy & Data Freedom** | Click **Export Data** or **Delete Account** in Settings | 1-click offline JSON backup of all your applications, notes, and milestones, or permanent account erasure under strict database isolation |
+| 🔎 **Discover** | Search curated scholarships, universities worldwide (ROR) or US degree programs (College Scorecard) | One-click add to your applications or your opening watchlist |
+| ⚡ **URL Auto-Fill** | Paste an admissions link | Title, provider, country, degree level, deadline and funding notes filled in for you |
+| 🎯 **Application Tracker** | Add a program or scholarship | Status tracking, deadline countdowns, archive of past-due items, and an **Opening Watchlist** for intakes that haven't opened |
+| 🗓️ **This Week & Calendar** | Open the dashboard or Deadlines page | A ranked list of what needs attention now, and a month calendar of deadlines, due dates and expected openings |
+| 📅 **Calendar Sync** | Create a private link in Settings | Your deadlines in Google Calendar, Apple Calendar or Outlook, updated automatically, with alerts 7 days and 1 day before |
+| 💰 **Costs & Compare** | Enter tuition, living costs, fees and funding | Net cost per application, and a side-by-side comparison of up to 4 applications in one currency (ECB exchange rates) |
+| 🗂️ **Document Checklist** | Tick the common documents you already have | Each application's checklist matched against them: what's covered, what's still needed, what expires before the deadline, and what's specific to that application |
+| 📄 **Official Source Ingestion** | Paste an admissions link or upload a prospectus PDF | Text extracted with page numbers and section titles; suggested deadlines and required documents for you to confirm |
+| 💬 **Grounded Q&A** | Ask *"What IELTS score is required?"* | An answer quoted from your sources with the page number, or an honest "not found" |
+| 📝 **Application-Specific Blueprints** | Click **SOP**, **Interview**, **LOR** or **Study Plan** | A plan built from that application's own requirements: quoted limits and rules, a tailored structure, a timeline counted back from its deadline, and a list of what the sources don't say |
+| 🔒 **Privacy & Data Freedom** | Click **Export Data** or **Delete Account** in Settings | A JSON backup of everything, or permanent erasure, with strict per-user database isolation |
 
 ---
 
@@ -78,8 +80,8 @@ When a requirement is missing from your document, it says so openly instead of m
 | **Security & SSRF Defense** | Multi-layer server-side protection on web ingestion: DNS resolution checks, private IP blocking, stream size caps, and mime-type verification |
 | **Row-Level Security (RLS)** | PostgreSQL policies ensure complete owner isolation; no user can ever query or view another user's documents or applications |
 | **Clean Glassmorphism UI** | A tailored Cool Blue frosted glass design system with backdrop blur, ambient color glow, and accessible contrast |
-| **Zero-Cost Deployment** | Fully functional without paid third-party subscriptions; works with free-tier Supabase, Next.js on Vercel, and optional Gemini free tier |
-| **Automated Testing** | 34 automated unit and integration tests covering security, grounding, auth validation, and intake workflows |
+| **Zero-Cost Deployment** | Fully functional without paid subscriptions: free-tier Supabase, Next.js on Vercel (running in the same region as the database), and an optional Gemini API key |
+| **Automated Testing** | 121 automated tests covering security, grounding, PDF extraction, blueprints, costs, calendar and document matching, run on every push by GitHub Actions |
 
 ---
 
@@ -93,7 +95,8 @@ flowchart LR
     SEC --> ING["Ingestion Engine<br/>HTML text cleaner · PDF parser"]
     ING --> DB[("Supabase PostgreSQL<br/>Owner-isolated with RLS")]
     UI --> RAG["Grounded RAG Engine<br/>Keyword weighting + Citation matching"]
-    RAG --> GEM["Admissions Blueprints<br/>SOP · Interview · LOR · Q&A"]
+    RAG --> GEM["Application-specific blueprints<br/>SOP · Interview · LOR · Study plan · Q&A"]
+    GEM -. optional .-> AI["Google Gemini<br/>(writes from the same evidence)"]
 ```
 
 ### How an admissions document turns into verified preparation
@@ -119,7 +122,7 @@ When preparing high-stakes university or visa applications, incorrect informatio
 - **No silent overwrites.** Ingesting a university page will suggest deadlines and required documents, but it will never erase or change what you typed manually.
 - **Evidence or abstention.** If your document does not contain an answer (for example, if a scholarship summary does not list specific departmental language cutoffs), the system clearly says so and advises where to look instead of inventing scores.
 - **Separation of facts and coaching.** Official facts cited from your document are displayed with distinct badges and page tags, separate from general strategic coaching advice.
-- **No biased hardcoding.** All text inputs, placeholders, and blueprints work universally for any degree level (Bachelor's, Master's, PhD) or country, without favoring specific programs.
+- **Blueprints only state what your sources say.** Word limits, letter counts, interview stages and selection criteria are quoted from that application's documents with page numbers; anything the sources don't cover is listed under *Not found in your sources* instead of being guessed.
 - **Your data stays yours.** Every database query enforces Row Level Security based on your encrypted session. You can download all your data in one click or permanently delete your account at any time.
 
 ---
@@ -147,10 +150,11 @@ The test suite runs 34 automated checks on every build, verifying security, grou
 | **Frontend** | React 19 + Tailwind CSS | Fluid reactive state, custom frosted glass styling, responsive layout |
 | **Typography** | Manrope & DM Sans | Clean, legible font pairing designed for dense information dashboards |
 | **Backend & Database** | Supabase (PostgreSQL) | Native authentication, instant relational data, and Row Level Security |
-| **Document Processing** | Node.js stream parsing & `pdf-parse` | Extracts clean text and page numbers from official prospectuses |
-| **Security Shield** | Node.js `dns` & `ipaddr.js` | Prevents SSRF attacks by inspecting resolved network addresses before fetching |
-| **AI Synthesis** | Deterministic RAG + Google Gemini Free Tier | Works 100% out of the box with zero external cost; optional model synthesis |
-| **Testing** | Vitest | Fast, modern test runner validating application logic and security constraints |
+| **Document Processing** | pdf.js (via `unpdf`) | Reads real-world PDFs (embedded fonts, Word/InDesign exports) with page numbers and headings; detects scanned and protected files |
+| **Security Shield** | Node.js `dns` & `net` | Prevents SSRF attacks by inspecting resolved network addresses before fetching |
+| **AI Synthesis** | Grounded rules engine + optional Google Gemini (`gemini-3.5-flash-lite`, configurable) | Works fully without an API key; with one, the model writes answers and blueprints from the same cited evidence |
+| **Hosting** | Vercel (Sydney region) + Supabase | Server code runs next to the database, so each query is a few milliseconds |
+| **Testing** | Vitest + GitHub Actions | Typecheck and tests on every push and pull request |
 
 ---
 
@@ -191,14 +195,22 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
-# Optional: Add your free Google Gemini API key for enhanced conversational synthesis
+# Optional: a Google Gemini API key lets the model write Q&A answers and blueprints
+# from your sources (everything works without it)
 # GEMINI_API_KEY=your-gemini-key-here
+# GEMINI_MODEL=gemini-3.5-flash-lite
+
+# Optional: free key from https://api.data.gov/signup/ for US program search in Discover
+# COLLEGE_SCORECARD_API_KEY=your-key-here
 ```
 
 ### Step 4: Set up the database
-In your Supabase project dashboard, click **SQL Editor** &rarr; **New query**, and run the two migration scripts in this order:
-1. Copy and run [`supabase/migrations/20261101000000_init_schema.sql`](supabase/migrations/20261101000000_init_schema.sql)
-2. Copy and run [`supabase/migrations/20261102000000_opening_reminders.sql`](supabase/migrations/20261102000000_opening_reminders.sql)
+In your Supabase project dashboard, click **SQL Editor** &rarr; **New query**, and run each migration script in this order:
+1. [`20261101000000_init_schema.sql`](supabase/migrations/20261101000000_init_schema.sql): tables, row-level security, storage bucket
+2. [`20261102000000_opening_reminders.sql`](supabase/migrations/20261102000000_opening_reminders.sql): opening watchlist
+3. [`20261113000000_parent_ownership_policies.sql`](supabase/migrations/20261113000000_parent_ownership_policies.sql): stricter ownership rules
+4. [`20261114000000_application_costs.sql`](supabase/migrations/20261114000000_application_costs.sql): cost fields
+5. [`20261115000000_calendar_feeds.sql`](supabase/migrations/20261115000000_calendar_feeds.sql): private calendar feeds
 
 ### Step 5: Start the app
 ```bash
@@ -210,7 +222,7 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser!
 ```bash
 npm test
 ```
-All 34 security, grounding, and isolation tests will run locally.
+All 121 tests run locally (the same checks GitHub runs on every push).
 
 ---
 
@@ -231,32 +243,33 @@ All 34 security, grounding, and isolation tests will run locally.
 ```
 abroad-application-hub/
 ├── app/                              # Next.js 15 App Router pages & actions
-│   ├── api/                          # REST API route handlers
-│   │   └── admissions/fetch-details/ # Auto-fetch metadata from official URLs
-│   ├── app/                          # Authenticated workspace
-│   │   ├── applications/             # Application details, new, and edit forms
-│   │   │   ├── [id]/                 # Single application overview & source manager
-│   │   │   │   └── rag/              # Server Actions for Q&A and blueprints
-│   │   │   └── new/                  # Dual-mode application & reminder creator
-│   │   ├── settings/                 # Account deletion & JSON data export
-│   │   └── page.tsx                  # Main dashboard (Kanban deck, nudge banners)
-│   ├── auth/callback/                # Supabase authentication redirect handler
-│   ├── login/ & signup/              # Auth forms
+│   ├── api/
+│   │   ├── admissions/fetch-details/ # URL auto-fill
+│   │   └── calendar/[token]/         # Private iCalendar feed
+│   ├── app/                          # Signed-in workspace
+│   │   ├── applications/             # Application pages, new & edit forms
+│   │   │   └── [id]/rag/ & sources/  # Q&A, blueprints, source ingestion actions
+│   │   ├── compare/                  # Side-by-side comparison with costs
+│   │   ├── deadlines/                # Month calendar
+│   │   ├── discover/                 # Scholarship, university & US program search
+│   │   ├── documents/                # Document checklist across applications
+│   │   ├── settings/                 # Calendar sync, export, account deletion
+│   │   └── page.tsx                  # Dashboard (This week, deck, watchlist)
+│   ├── auth/callback/                # Supabase auth redirect handler
 │   └── page.tsx                      # Public landing page
-├── components/                       # UI components (Cool Blue Glassmorphism)
-│   ├── ApplicationDeck.tsx           # Multi-tab application tracker & watchlist
-│   ├── ApplicationPrepHub.tsx        # Grounded Prep Studio, Q&A, and markdown viewer
-│   ├── NewApplicationForm.tsx        # Dual-mode form with 1-click URL autofill & discovery
-│   ├── OpeningNudgeBanner.tsx        # Automated dashboard intake alerts
-│   └── OpeningReminderModal.tsx      # Quick watchlist reminder modal
-├── lib/                              # Core engines
-│   ├── admissions/                   # Verified scholarship presets & metadata types
-│   ├── ingestion/                    # SSRF defense, HTML parser, and PDF chunker
-│   ├── rag/                          # Grounded retrieval engine & blueprint synthesis
-│   └── supabase/                     # Browser and server Supabase clients
-├── supabase/migrations/              # SQL schema, RLS policies, and triggers
-├── tests/                            # Automated test suite (Vitest - 38 tests)
-└── types/database.ts                 # TypeScript database interfaces
+├── components/                       # UI components
+├── lib/
+│   ├── ai/gemini.ts                  # Optional Gemini client (model configurable)
+│   ├── catalog/                      # Curated scholarships, ROR & College Scorecard clients
+│   ├── documents/                    # Common documents & checklist matching
+│   ├── ingestion/                    # SSRF guard, HTML & PDF extraction, chunking, facts
+│   ├── rag/                          # Retrieval, Q&A and application-specific blueprints
+│   ├── supabase/                     # Supabase clients, ownership checks
+│   ├── calendar.ts, ics.ts, weekly.ts  # Calendar grid, iCalendar feed, This week
+│   └── costs.ts, fx.ts               # Cost estimates & currency conversion
+├── supabase/migrations/              # SQL schema, RLS policies, functions
+├── tests/                            # Vitest suite (121 tests)
+└── .github/workflows/ci.yml          # Typecheck & tests on every push
 ```
 
 ---
@@ -276,14 +289,14 @@ abroad-application-hub/
 ## Limitations and next steps
 
 **Current Limitations:**
-* **JavaScript-Heavy Portals**: Web ingestion extracts static server-rendered HTML. Single-page applications that load content purely on the client should be uploaded via their PDF guidelines.
-* **Scanned Image PDFs**: Prospectuses saved as pure images without a text layer cannot be parsed by text extractors without an OCR engine.
-* **Document Currency**: The system reflects the exact guidelines you attach; if a university updates its requirements mid-cycle, you should attach the updated document.
+* **JavaScript-Heavy Portals**: Web ingestion reads server-rendered HTML. For portals that load content in the browser, upload the PDF guidelines instead.
+* **Scanned PDFs**: Image-only PDFs are detected and rejected with a clear message; reading them would need OCR.
+* **Document Currency**: Answers reflect the documents you attach; if requirements change mid-cycle, attach the updated document.
 
 **Next Steps:**
-* Optical Character Recognition (OCR) for scanned embassy forms and printed certificates.
-* Multi-file synthesis across linked degree programs and partner scholarship awards.
-* Google Calendar and iCal sync for upcoming deadlines and opening alert dates.
+* OCR for scanned prospectuses and certificates.
+* Email reminders alongside the calendar feed.
+* Recommendation-letter tracker and eligibility matching against your profile.
 
 ---
 
